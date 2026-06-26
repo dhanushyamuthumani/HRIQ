@@ -1,0 +1,8 @@
+streamlit
+ollama
+pdfplumber
+python-docx
+pandas
+openpyxl
+plotly
+pytest

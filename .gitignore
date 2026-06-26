@@ -1,0 +1,11 @@
+.vercel
+node_modules/
+dist/
+__pycache__/
+*.pyc
+.env
+.pytest_cache/
+.agents/
+outputs/google_tokens.json
+outputs/settings.json
+outputs/pipeline.json
