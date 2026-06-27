@@ -707,6 +707,7 @@ export default function App() {
   };
 
   const deleteCandidate = async (name: string) => {
+    if (!window.confirm(`Are you sure you want to delete ${name}?`)) return;
     const filtered = candidates.filter(c => c.full_name !== name);
     try {
       const res = await fetch(`${API_BASE}/api/talent/save`, {
@@ -720,9 +721,12 @@ export default function App() {
         if (deepDiveCand && deepDiveCand.full_name === name) {
           setDeepDiveCand(null);
         }
+      } else {
+        alert("❌ Failed to delete candidate: " + (data.detail || "Server error"));
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      alert("❌ Error deleting candidate: " + e.message);
     }
   };
 
