@@ -278,7 +278,7 @@ def search_talent(query: str = Form(...), context: str = Form("Complete Hub")):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/talent/save")
-def save_talent(payload: list):
+def save_talent(payload: List[dict]):
     try:
         save_talent_data(payload)
         return {"success": True}
