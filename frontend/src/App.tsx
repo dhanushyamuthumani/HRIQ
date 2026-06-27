@@ -37,7 +37,7 @@ import {
 
 const API_BASE = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
   ? "http://127.0.0.1:8000"
-  : "https://hriq-backend-service.onrender.com"; // We will update this with your actual Render URL
+  : "https://hriq-dh1n.onrender.com"; // Your live Render backend URL
 
 interface Candidate {
   full_name: string;
