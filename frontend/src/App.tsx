@@ -292,14 +292,14 @@ export default function App() {
           });
           const data = await res.json();
           if (res.ok && data.success) {
-            alert(`🎉 Google Workspace connected successfully as ${data.email}!`);
+            alert(`Success:  Google Workspace connected successfully as ${data.email}!`);
             fetchGoogleStatus();
             setActiveTab('settings');
           } else {
-            alert(`❌ Connection failed: ${data.detail || "Unknown error"}`);
+            alert(`Error:  Connection failed: ${data.detail || "Unknown error"}`);
           }
         } catch (e: any) {
-          alert(`❌ Connection error: ${e.message}`);
+          alert(`Error:  Connection error: ${e.message}`);
         } finally {
           setUploadProgress(null);
           setUploadStatus("");
@@ -370,7 +370,7 @@ export default function App() {
         setUsernameInput("");
         setPasswordInput("");
       } else {
-        alert("❌ Invalid HR credentials. Hint: use hr / hr123");
+        alert("Error:  Invalid HR credentials. Hint: use hr / hr123");
       }
     } else if (selectedLoginRole === 'ceo') {
       if (usernameInput === 'ceo' && passwordInput === 'ceo123') {
@@ -379,7 +379,7 @@ export default function App() {
         setUsernameInput("");
         setPasswordInput("");
       } else {
-        alert("❌ Invalid CEO credentials. Hint: use ceo / ceo123");
+        alert("Error:  Invalid CEO credentials. Hint: use ceo / ceo123");
       }
     }
   };
@@ -403,7 +403,7 @@ export default function App() {
       if (data.success) {
         setJobs(updatedJobs);
         setJobForm({ title: "", department: "Engineering", location: "Remote", description: "", desired_skills: "", salary: "", status: "Published" });
-        alert("🎉 Job successfully published to career portal!");
+        alert("Success:  Job successfully published to career portal!");
       }
     } catch (err) {
       console.error(err);
@@ -452,11 +452,11 @@ export default function App() {
         setApplyFile(null);
         fetchApplicants();
       } else {
-        alert("❌ Application failed: " + (data.detail || "Unknown error"));
+        alert("Error:  Application failed: " + (data.detail || "Unknown error"));
       }
     } catch (err: any) {
       console.error(err);
-      alert("❌ Application error: " + err.message);
+      alert("Error:  Application error: " + err.message);
     } finally {
       setLoadingAction(null);
     }
@@ -497,12 +497,12 @@ export default function App() {
       });
       const data = await res.json();
       if (data.success) {
-        setEmailStatusMsg(`✅ ${data.message}`);
+        setEmailStatusMsg(`Success:  ${data.message}`);
       } else {
-        setEmailStatusMsg(`❌ Failed: ${data.detail || "Unknown error"}`);
+        setEmailStatusMsg(`Error:  Failed: ${data.detail || "Unknown error"}`);
       }
     } catch (e: any) {
-      setEmailStatusMsg(`❌ Failed: ${e.message}`);
+      setEmailStatusMsg(`Error:  Failed: ${e.message}`);
     } finally {
       setLoadingAction(null);
     }
@@ -894,11 +894,11 @@ export default function App() {
           setDeepDiveCand(null);
         }
       } else {
-        alert("❌ Failed to delete candidate: " + (data.detail || "Server error"));
+        alert("Error:  Failed to delete candidate: " + (data.detail || "Server error"));
       }
     } catch (e: any) {
       console.error(e);
-      alert("❌ Error deleting candidate: " + e.message);
+      alert("Error:  Error deleting candidate: " + e.message);
     }
   };
 
@@ -980,7 +980,7 @@ export default function App() {
       const data = await res.json();
       if (data.success) {
         setInterviews(data.interviews || []);
-        alert("🎉 Interview scheduled successfully!");
+        alert("Success:  Interview scheduled successfully!");
         setScheduleForm({ date: '', time: '', platform: 'Google Meet', interviewer: '', role: '' });
         setSelectedInterviewCand(null);
         setInterviewTab('pipeline');
@@ -1000,7 +1000,7 @@ export default function App() {
       const data = await res.json();
       if (data.success) {
         setInterviews(data.interviews || []);
-        alert("🎉 Post-interview results saved successfully!");
+        alert("Success:  Post-interview results saved successfully!");
         setResultForm({ candidate_name: '', role: '', result: 'Passed', score: '', notes: '' });
         setInterviewTab('pipeline');
       }
@@ -1019,13 +1019,13 @@ export default function App() {
       const data = await res.json();
       if (data.success) {
         setInterviews(data.interviews || []);
-        alert("🎉 Interview cancelled and candidate has been notified!");
+        alert("Success:  Interview cancelled and candidate has been notified!");
       } else {
-        alert(`❌ Failed to cancel: ${data.detail || "Unknown error"}`);
+        alert(`Error:  Failed to cancel: ${data.detail || "Unknown error"}`);
       }
     } catch (e: any) {
       console.error(e);
-      alert(`❌ Error cancelling interview: ${e.message}`);
+      alert(`Error:  Error cancelling interview: ${e.message}`);
     } finally {
       setLoadingAction(null);
     }
@@ -1970,7 +1970,7 @@ export default function App() {
                 <p className="text-slate-500 text-sm mt-0.5">Post and manage active openings on your public Career Portal.</p>
               </div>
               <div className="bg-indigo-50 border border-indigo-100 rounded-lg px-4 py-2 text-xs text-indigo-700 font-semibold flex items-center">
-                🔗 Public Careers Link: 
+                <Globe className="h-4 w-4 mr-1 inline" /> Public Careers Link: 
                 <a 
                   href="https://frontend-pink-phi-73.vercel.app" 
                   target="_blank" 
@@ -2098,7 +2098,7 @@ export default function App() {
                           <tr key={j.id} className="hover:bg-slate-50/20 transition-colors">
                             <td className="py-3.5 px-6">
                               <span className="font-bold text-slate-900">{j.title}</span>
-                              <span className="block text-[10px] text-slate-400 mt-0.5">📍 {j.location} • Published {j.created_at}</span>
+                              <span className="block text-[10px] text-slate-400 mt-0.5"><MapPin className="h-3.5 w-3.5 mr-1 inline text-slate-400" /> {j.location} • Published {j.created_at}</span>
                             </td>
                             <td className="py-3.5 px-6 font-medium text-slate-500">{j.department}</td>
                             <td className="py-3.5 px-6 font-semibold">{j.salary || "N/A"}</td>
@@ -2283,7 +2283,7 @@ export default function App() {
                 {uploadFiles.length > 0 && (
                   <div className="bg-slate-50 border border-slate-100 rounded-lg p-3 text-xs text-slate-500 space-y-1">
                     <p className="font-semibold text-slate-700">Selected Files:</p>
-                    {uploadFiles.map((f, i) => <p key={i}>📄 {f.name} ({(f.size/1024).toFixed(1)} KB)</p>)}
+                    {uploadFiles.map((f, i) => <p key={i}><FileText className="h-4 w-4 mr-1 text-indigo-500 inline" /> {f.name} ({(f.size/1024).toFixed(1)} KB)</p>)}
                   </div>
                 )}
 
@@ -2292,7 +2292,7 @@ export default function App() {
                   disabled={uploadFiles.length === 0}
                   className="w-full bg-slate-900 hover:bg-slate-800 disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold text-sm rounded-lg py-2.5 transition-colors flex items-center justify-center"
                 >
-                  🚀 Execute Parallel Ingestion
+                  <Sparkles className="h-4 w-4 mr-1 inline" /> Execute Parallel Ingestion
                 </button>
 
                 {uploadProgress !== null && (
@@ -2340,7 +2340,7 @@ export default function App() {
                   disabled={!folderPath.trim()}
                   className="w-full bg-white hover:bg-slate-50 disabled:bg-slate-100 disabled:text-slate-400 text-slate-800 border border-slate-200 font-semibold text-sm rounded-lg py-2.5 transition-colors"
                 >
-                  ⚡ Deep Scan (Turbo Folder Scan)
+                  <Sparkles className="h-4 w-4 mr-1 inline" /> Deep Scan (Turbo Folder Scan)
                 </button>
               </div>
           </div>
@@ -2387,7 +2387,7 @@ export default function App() {
                                 <div className="flex items-center justify-between">
                                   <div>
                                     <h4 className="font-bold text-slate-900 text-base">{cand.full_name}</h4>
-                                    <p className="text-xs text-slate-400 font-medium">{cand.working_role} | 📍 {cand.phone !== "N/A" ? cand.phone : "Global"}</p>
+                                    <p className="text-xs text-slate-400 font-medium">{cand.working_role} | <MapPin className="h-3.5 w-3.5 mr-1 inline text-slate-400" /> {cand.phone !== "N/A" ? cand.phone : "Global"}</p>
                                   </div>
                                   <div className="flex items-center bg-indigo-50 text-indigo-700 text-xs font-extrabold px-2.5 py-1 rounded-full border border-indigo-100">
                                     <Award className="h-3.5 w-3.5 mr-1" />
@@ -2406,13 +2406,13 @@ export default function App() {
                                     onClick={() => handleSendChat(`generate pitch for ${cand.full_name}`)}
                                     className="bg-slate-50 hover:bg-slate-100 border border-slate-200 font-semibold text-slate-700 px-3 py-1.5 rounded-lg flex items-center transition-colors"
                                   >
-                                    💼 Pitch
+                                    <Briefcase className="h-4 w-4 mr-1 inline" /> Pitch
                                   </button>
                                   <button 
                                     onClick={() => handleSendChat(`generate interview prep questions for ${cand.full_name}`)}
                                     className="bg-slate-50 hover:bg-slate-100 border border-slate-200 font-semibold text-slate-700 px-3 py-1.5 rounded-lg flex items-center transition-colors"
                                   >
-                                    🎤 Questions
+                                    <Users className="h-4 w-4 mr-1 inline" /> Questions
                                   </button>
                                   <button 
                                     onClick={() => {
@@ -2427,7 +2427,7 @@ export default function App() {
                                     }}
                                     className="bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 font-semibold text-indigo-700 px-3 py-1.5 rounded-lg flex items-center transition-colors"
                                   >
-                                    📧 Email
+                                    <Mail className="h-4 w-4 mr-1 inline" /> Email
                                   </button>
                                   <button 
                                     onClick={() => {
@@ -2439,7 +2439,7 @@ export default function App() {
                                     }}
                                     className={`px-3 py-1.5 rounded-lg font-semibold border transition-all ${selectedCandidates.includes(cand.full_name) ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-indigo-50 border-indigo-200 text-indigo-700'}`}
                                   >
-                                    {selectedCandidates.includes(cand.full_name) ? '✅ Selected' : '➕ Select Profile'}
+                                    {selectedCandidates.includes(cand.full_name) ? 'Success:  Selected' : '<Plus className="h-4 w-4 mr-1 inline" /> Select Profile'}
                                   </button>
                                 </div>
                               </div>
@@ -2553,7 +2553,7 @@ export default function App() {
 
               {/* Data search inputs bar */}
               <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">🔍 Search Filters</h3>
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest"><Search className="h-4 w-4 mr-1 inline" /> Search Filters</h3>
                 <form onSubmit={handleSearchSubmit} className="flex items-center space-x-3">
                   <div className="flex-1 relative">
                     <Search className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
@@ -2591,7 +2591,7 @@ export default function App() {
                 {/* Tag Select Filter row */}
                 <div className="border-t border-slate-100 pt-4 flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <span className="text-xs font-semibold text-slate-500">🎯 Filter by Collection Tag:</span>
+                    <span className="text-xs font-semibold text-slate-500"><Award className="h-4 w-4 mr-1 inline" /> Filter by Collection Tag:</span>
                     <select 
                       value={selectedTag}
                       onChange={(e) => setSelectedTag(e.target.value)}
@@ -2619,7 +2619,7 @@ export default function App() {
               {/* Candidates Data Table */}
               <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                 <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-                  <h3 className="font-bold text-slate-800 text-sm">🧬 Candidate Database Matrix</h3>
+                  <h3 className="font-bold text-slate-800 text-sm"><Users className="h-4 w-4 mr-1 inline" /> Candidate Database Matrix</h3>
                   <button 
                     onClick={downloadExcel}
                     className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center transition-all"
@@ -2712,13 +2712,13 @@ export default function App() {
                     onClick={() => setSourcingMode('ai')}
                     className={`pb-3 text-sm font-semibold border-b-2 transition-all ${sourcingMode === 'ai' ? 'border-indigo-600 text-indigo-600 font-bold' : 'border-transparent text-slate-400 hover:text-slate-700'}`}
                   >
-                    ⚡ AI Semantic Sourcing
+                    <Sparkles className="h-4 w-4 mr-1 inline" /> AI Semantic Sourcing
                   </button>
                   <button
                     onClick={() => setSourcingMode('manual')}
                     className={`pb-3 text-sm font-semibold border-b-2 transition-all ${sourcingMode === 'manual' ? 'border-indigo-600 text-indigo-600 font-bold' : 'border-transparent text-slate-400 hover:text-slate-700'}`}
                   >
-                    🔍 Manual Sourcing
+                    <Search className="h-4 w-4 mr-1 inline" /> Manual Sourcing
                   </button>
                 </div>
                 
@@ -2728,7 +2728,7 @@ export default function App() {
                     onClick={() => setSourcingPlatform('linkedin')}
                     className={`text-xs font-bold px-3 py-1.5 rounded transition-all ${sourcingPlatform === 'linkedin' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
                   >
-                    💼 LinkedIn Sourcing (SerpAPI)
+                    <Briefcase className="h-4 w-4 mr-1 inline" /> LinkedIn Sourcing (SerpAPI)
                   </button>
                 </div>
               </div>
@@ -2801,7 +2801,7 @@ export default function App() {
                   className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-6 py-2.5 rounded-lg transition-colors flex items-center"
                 >
                   {loadingAction === 'sourcing' && <RefreshCw className="animate-spin h-3.5 w-3.5 mr-1.5" />}
-                  🚀 {sourcingMode === 'ai' ? 'AI Extract & Source Live Profiles' : `Search ${sourcingPlatform === 'linkedin' ? 'LinkedIn' : 'GitHub'} Profiles`}
+                  <Sparkles className="h-4 w-4 mr-1 inline" /> {sourcingMode === 'ai' ? 'AI Extract & Source Live Profiles' : `Search ${sourcingPlatform === 'linkedin' ? 'LinkedIn' : 'GitHub'} Profiles`}
                 </button>
               </div>
             </div>
@@ -2820,20 +2820,20 @@ export default function App() {
                               <a href={cand.profile_url} target="_blank" className="hover:underline">{cand.full_name}</a>
                               <span className="text-slate-400 text-xs font-medium ml-2">@{cand.username}</span>
                             </h4>
-                            <p className="text-xs text-slate-400 font-semibold">📍 {cand.location} | 🏢 {cand.company} | ✉️ {cand.email}</p>
+                            <p className="text-xs text-slate-400 font-semibold"><MapPin className="h-3.5 w-3.5 mr-1 inline text-slate-400" /> {cand.location} | <Globe className="h-4 w-4 mr-1 inline" /> {cand.company} | <Mail className="h-4 w-4 mr-1 inline" /> {cand.email}</p>
                             <p className="text-sm text-slate-600 font-medium mt-1">{cand.bio}</p>
                           </div>
                         </div>
                         <div className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-500 space-y-0.5 text-right shrink-0">
                           {sourcingPlatform === 'github' ? (
                             <>
-                              <p>⭐ Repositories: <strong>{cand.public_repos}</strong></p>
-                              <p>👥 Followers: <strong>{cand.followers}</strong></p>
+                              <p><Star className="h-4 w-4 mr-1 inline" /> Repositories: <strong>{cand.public_repos}</strong></p>
+                              <p><Users className="h-4 w-4 mr-1 inline" /> Followers: <strong>{cand.followers}</strong></p>
                             </>
                           ) : (
                             <>
-                              <p>⚡ Experience: <strong>{cand.experience_years || 'N/A'}</strong></p>
-                              <p>🎓 Domain: <strong>{cand.domain || 'N/A'}</strong></p>
+                              <p><Sparkles className="h-4 w-4 mr-1 inline" /> Experience: <strong>{cand.experience_years || 'N/A'}</strong></p>
+                              <p><BookOpen className="h-4 w-4 mr-1 inline" /> Domain: <strong>{cand.domain || 'N/A'}</strong></p>
                             </>
                           )}
                         </div>
@@ -2847,19 +2847,19 @@ export default function App() {
                             className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-lg transition-colors flex items-center"
                           >
                             {loadingAction === `outreach_${cand.username}` && <RefreshCw className="animate-spin h-3.5 w-3.5 mr-1.5" />}
-                            ✨ Draft Personalized Pitch Campaign
+                            <Sparkles className="h-4 w-4 mr-1 inline" /> Draft Personalized Pitch Campaign
                           </button>
                           
                           {candidates.some(c => c.email === cand.email && cand.email !== "N/A") ? (
                             <span className="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-3 py-2 rounded-lg">
-                              ✅ Sourced & Registered
+                              Success:  Sourced & Registered
                             </span>
                           ) : (
                             <button 
                               onClick={() => importToTalentHub(cand)}
                               className="bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 font-bold text-xs px-4 py-2 rounded-lg transition-colors"
                             >
-                              📥 Import candidate Profile
+                              <Plus className="h-4 w-4 mr-1 inline" /> Import candidate Profile
                             </button>
                           )}
                         </div>
@@ -2921,7 +2921,7 @@ export default function App() {
             {/* Sub-tabs */}
             <div className="flex border-b border-slate-200 gap-6">
               {(['pipeline', 'schedule', 'results', 'scorecard'] as const).map(t => {
-                const labels: Record<string,string> = { pipeline: '🔄 Pipeline Board', schedule: '📅 Schedule Interview', results: '📊 Post-Interview Results', scorecard: '📋 Scorecard Generator' };
+                const labels: Record<string,string> = { pipeline: '<RefreshCw className="h-4 w-4 mr-1 inline" /> Pipeline Board', schedule: '<Calendar className="h-4 w-4 mr-1 inline" /> Schedule Interview', results: '<TrendingUp className="h-4 w-4 mr-1 inline" /> Post-Interview Results', scorecard: '<ClipboardList className="h-4 w-4 mr-1 inline" /> Scorecard Generator' };
                 return (
                   <button key={t} onClick={() => setInterviewTab(t)}
                     className={`pb-3 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${interviewTab === t ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-700'}`}
@@ -3048,7 +3048,7 @@ export default function App() {
                                     rel="noopener noreferrer"
                                     className="text-xs text-emerald-600 hover:underline font-semibold flex items-center"
                                   >
-                                    📅 Add to Cal
+                                    <Calendar className="h-4 w-4 mr-1 inline" /> Add to Cal
                                   </a>
                                 )}
                               </td>
@@ -3180,7 +3180,7 @@ export default function App() {
                           <div className="space-y-1">
                             <div className="flex items-center justify-between">
                               <span className="text-xs font-bold text-slate-500 uppercase">Invitation Email Draft</span>
-                              <button onClick={() => navigator.clipboard?.writeText(interviewInvite)} className="text-xs text-indigo-600 font-semibold border border-indigo-200 px-2 py-1 rounded hover:bg-indigo-50">📋 Copy</button>
+                              <button onClick={() => navigator.clipboard?.writeText(interviewInvite)} className="text-xs text-indigo-600 font-semibold border border-indigo-200 px-2 py-1 rounded hover:bg-indigo-50"><ClipboardList className="h-4 w-4 mr-1 inline" /> Copy</button>
                             </div>
                             <textarea 
                               rows={8}
@@ -3199,7 +3199,7 @@ export default function App() {
                             className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm py-2.5 rounded-lg transition-colors flex items-center justify-center"
                           >
                             {loadingAction === 'send_email' && <RefreshCw className="animate-spin h-4 w-4 mr-2" />}
-                            🚀 Push & Send Interview Invite
+                            <Sparkles className="h-4 w-4 mr-1 inline" /> Push & Send Interview Invite
                           </button>
                         </div>
                       )}
@@ -3354,7 +3354,7 @@ export default function App() {
                   <div className="px-5 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
                     <h4 className="font-bold text-slate-800 text-sm">Interview Scorecard</h4>
                     {scorecard && (
-                      <button onClick={() => navigator.clipboard?.writeText(scorecard)} className="text-xs text-indigo-600 border border-indigo-200 px-2 py-1 rounded hover:bg-indigo-50 font-semibold">📋 Copy</button>
+                      <button onClick={() => navigator.clipboard?.writeText(scorecard)} className="text-xs text-indigo-600 border border-indigo-200 px-2 py-1 rounded hover:bg-indigo-50 font-semibold"><ClipboardList className="h-4 w-4 mr-1 inline" /> Copy</button>
                     )}
                   </div>
                   {scorecard ? (
@@ -3396,31 +3396,31 @@ export default function App() {
                       onClick={() => setBulkTab('outreach')}
                       className={`pb-3 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${bulkTab === 'outreach' ? 'border-indigo-600 text-indigo-600 font-bold' : 'border-transparent text-slate-400 hover:text-slate-700'}`}
                     >
-                      📧 Bulk Outreach
+                      <Mail className="h-4 w-4 mr-1 inline" /> Bulk Outreach
                     </button>
                     <button
                       onClick={() => setBulkTab('comparison')}
                       className={`pb-3 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${bulkTab === 'comparison' ? 'border-indigo-600 text-indigo-600 font-bold' : 'border-transparent text-slate-400 hover:text-slate-700'}`}
                     >
-                      ⚔️ Battlecard Compare
+                      <Shield className="h-4 w-4 mr-1 inline" /> Battlecard Compare
                     </button>
                     <button
                       onClick={() => setBulkTab('pipeline')}
                       className={`pb-3 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${bulkTab === 'pipeline' ? 'border-indigo-600 text-indigo-600 font-bold' : 'border-transparent text-slate-400 hover:text-slate-700'}`}
                     >
-                      🗂️ Pipeline Kanban
+                      <ClipboardList className="h-4 w-4 mr-1 inline" /> Pipeline Kanban
                     </button>
                     <button
                       onClick={() => setBulkTab('radar')}
                       className={`pb-3 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${bulkTab === 'radar' ? 'border-indigo-600 text-indigo-600 font-bold' : 'border-transparent text-slate-400 hover:text-slate-700'}`}
                     >
-                      🎯 Talent Radar
+                      <Award className="h-4 w-4 mr-1 inline" /> Talent Radar
                     </button>
                     <button
                       onClick={() => setBulkTab('boolean')}
                       className={`pb-3 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${bulkTab === 'boolean' ? 'border-indigo-600 text-indigo-600 font-bold' : 'border-transparent text-slate-400 hover:text-slate-700'}`}
                     >
-                      🔍 Boolean Builder
+                      <Search className="h-4 w-4 mr-1 inline" /> Boolean Builder
                     </button>
                   </div>
 
@@ -3444,7 +3444,7 @@ export default function App() {
                           className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-100 disabled:text-slate-400 text-white font-bold text-xs px-5 py-2.5 rounded-lg transition-colors flex items-center"
                         >
                           {loadingAction === 'bulk' && <RefreshCw className="animate-spin h-3.5 w-3.5 mr-1.5" />}
-                          ⚡ Draft email outreach templates for selection
+                          <Sparkles className="h-4 w-4 mr-1 inline" /> Draft email outreach templates for selection
                         </button>
                         {Object.keys(bulkOutreachEmails).length > 0 && (
                           <div className="space-y-3 border-t border-slate-100 pt-4">
@@ -3464,7 +3464,7 @@ export default function App() {
                                       onClick={() => navigator.clipboard?.writeText(bulkOutreachEmails[name])}
                                       className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold border border-indigo-200 px-2 py-1 rounded"
                                     >
-                                      📋 Copy
+                                      <ClipboardList className="h-4 w-4 mr-1 inline" /> Copy
                                     </button>
                                   </div>
                                   <pre className="p-4 text-xs text-slate-700 font-mono whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto bg-slate-50">{bulkOutreachEmails[name]}</pre>
@@ -3485,7 +3485,7 @@ export default function App() {
                             className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-5 py-2.5 rounded-lg transition-colors flex items-center"
                           >
                             {loadingAction === 'bulk' && <RefreshCw className="animate-spin h-3.5 w-3.5 mr-1.5" />}
-                            ⚔️ Generate Battlecard Analysis
+                            <Shield className="h-4 w-4 mr-1 inline" /> Generate Battlecard Analysis
                           </button>
                         </div>
 
@@ -3532,8 +3532,8 @@ export default function App() {
                                     </div>
                                     <div>
                                       <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-2">Contact & Tag</span>
-                                      <p className="text-xs text-slate-600">📧 {cand.email}</p>
-                                      <p className="text-xs text-slate-600">📞 {cand.phone}</p>
+                                      <p className="text-xs text-slate-600"><Mail className="h-4 w-4 mr-1 inline" /> {cand.email}</p>
+                                      <p className="text-xs text-slate-600"><Phone className="h-4 w-4 mr-1 inline" /> {cand.phone}</p>
                                       <span className="mt-1 inline-block bg-slate-100 text-slate-600 text-xs font-semibold px-2 py-0.5 rounded">{cand.tag}</span>
                                     </div>
                                   </div>
@@ -3554,7 +3554,7 @@ export default function App() {
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <div>
-                            <h3 className="font-bold text-slate-800 text-sm">🗂️ Recruitment Pipeline — Drag & Drop Kanban</h3>
+                            <h3 className="font-bold text-slate-800 text-sm"><ClipboardList className="h-4 w-4 mr-1 inline" /> Recruitment Pipeline — Drag & Drop Kanban</h3>
                             <p className="text-xs text-slate-400 mt-0.5">Drag candidates between stages. Auto-saved to browser storage.</p>
                           </div>
                           <button
@@ -3568,7 +3568,7 @@ export default function App() {
                             }}
                             className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-lg transition-colors"
                           >
-                            ➕ Add Selected to Pipeline
+                            <Plus className="h-4 w-4 mr-1 inline" /> Add Selected to Pipeline
                           </button>
                         </div>
                         <div className="grid grid-cols-5 gap-3">
@@ -3642,7 +3642,7 @@ export default function App() {
                     {bulkTab === 'radar' && (
                       <div className="space-y-4">
                         <div>
-                          <h3 className="font-bold text-slate-800 text-sm">🎯 Talent Radar — Skill Gap Heatmap</h3>
+                          <h3 className="font-bold text-slate-800 text-sm"><Award className="h-4 w-4 mr-1 inline" /> Talent Radar — Skill Gap Heatmap</h3>
                           <p className="text-xs text-slate-400 mt-0.5">Visualizes each candidate's skill coverage across critical tech domains.</p>
                         </div>
                         {(() => {
@@ -3711,7 +3711,7 @@ export default function App() {
                           className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-100 disabled:text-slate-400 text-white font-bold text-xs px-5 py-2.5 rounded-lg transition-colors flex items-center"
                         >
                           {loadingAction === 'bulk' && <RefreshCw className="animate-spin h-3.5 w-3.5 mr-1.5" />}
-                          ⚡ Compile Boolean sourcing blueprints
+                          <Sparkles className="h-4 w-4 mr-1 inline" /> Compile Boolean sourcing blueprints
                         </button>
                         {booleanSourcing && (
                           <div className="bg-indigo-950 text-indigo-100 rounded-xl p-5 font-mono text-sm leading-relaxed whitespace-pre-wrap border border-indigo-800">
@@ -3819,7 +3819,7 @@ export default function App() {
                 {googleStatus.connected ? (
                   <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-bold text-emerald-800">✅ Google Workspace Connected!</p>
+                      <p className="text-sm font-bold text-emerald-800">Success:  Google Workspace Connected!</p>
                       <p className="text-xs text-emerald-600 mt-0.5">Linked Account: <strong>{googleStatus.email}</strong></p>
                       <p className="text-xs text-slate-500 mt-2 font-medium">HRIQ will now schedule interviews to Google Calendar, set tasks in Google Tasks, and send invite emails via Gmail API automatically.</p>
                     </div>
@@ -3951,7 +3951,7 @@ export default function App() {
                   className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-5 py-2.5 rounded-lg transition-colors flex items-center justify-center"
                 >
                   {loadingAction === 'save_settings' && <RefreshCw className="animate-spin h-3.5 w-3.5 mr-1.5" />}
-                  💾 Save settings & signature
+                  <Settings className="h-4 w-4 mr-1 inline" /> Save settings & signature
                 </button>
               </div>
           </div>
@@ -3971,12 +3971,12 @@ export default function App() {
             <div className="flex items-center justify-between border-b border-slate-100 p-6 bg-slate-50">
               <div>
                 <h3 className="text-2xl font-extrabold text-slate-900 flex items-center">
-                  👤 Profile Deep Dive: {deepDiveCand.full_name}
+                  <Users className="h-4 w-4 mr-1 inline" /> Profile Deep Dive: {deepDiveCand.full_name}
                 </h3>
                 <p className="text-xs font-semibold text-slate-400 mt-1 flex items-center gap-3">
-                  <span>📧 {deepDiveCand.email}</span>
+                  <span><Mail className="h-4 w-4 mr-1 inline" /> {deepDiveCand.email}</span>
                   <span>|</span>
-                  <span>📞 {deepDiveCand.phone}</span>
+                  <span><Phone className="h-4 w-4 mr-1 inline" /> {deepDiveCand.phone}</span>
                   <span>|</span>
                   <span>Tag: <code className="bg-slate-200 text-slate-800 px-1.5 py-0.5 rounded font-mono">{deepDiveCand.tag}</code></span>
                 </p>
@@ -4053,7 +4053,7 @@ export default function App() {
                           className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition-colors flex items-center"
                         >
                           {loadingAction === 'pitch' && <RefreshCw className="animate-spin h-3 w-3 mr-1.5" />}
-                          ✨ Generate Pitch
+                          <Sparkles className="h-4 w-4 mr-1 inline" /> Generate Pitch
                         </button>
                       </div>
                       
@@ -4077,7 +4077,7 @@ export default function App() {
                           className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition-colors flex items-center"
                         >
                           {loadingAction === 'outreach' && <RefreshCw className="animate-spin h-3 w-3 mr-1.5" />}
-                          ✨ Generate Email
+                          <Sparkles className="h-4 w-4 mr-1 inline" /> Generate Email
                         </button>
                       </div>
                       
@@ -4104,7 +4104,7 @@ export default function App() {
                       className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-lg transition-colors flex items-center"
                     >
                       {loadingAction === 'guide' && <RefreshCw className="animate-spin h-3.5 w-3.5 mr-1.5" />}
-                      ✨ Generate Interview Prep Guide
+                      <Sparkles className="h-4 w-4 mr-1 inline" /> Generate Interview Prep Guide
                     </button>
                   </div>
                   {customGuide ? (
@@ -4137,7 +4137,7 @@ export default function App() {
                     className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-100 disabled:text-slate-400 text-white font-bold text-xs px-5 py-2.5 rounded-lg transition-colors flex items-center"
                   >
                     {loadingAction === 'gap' && <RefreshCw className="animate-spin h-3.5 w-3.5 mr-1.5" />}
-                    ⚡ Execute Gap Analysis comparison
+                    <Sparkles className="h-4 w-4 mr-1 inline" /> Execute Gap Analysis comparison
                   </button>
 
                   {fitAnalysis && (
@@ -4155,7 +4155,7 @@ export default function App() {
 
                       <div className="grid grid-cols-2 gap-6 text-sm">
                         <div>
-                          <h4 className="font-bold text-emerald-600 text-xs uppercase mb-1.5">✅ Strengths / Matching Skills</h4>
+                          <h4 className="font-bold text-emerald-600 text-xs uppercase mb-1.5">Success:  Strengths / Matching Skills</h4>
                           <div className="flex flex-wrap gap-1">
                             {fitAnalysis.matching_skills?.map((s: string) => (
                               <span key={s} className="bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs font-semibold px-2 py-0.5 rounded">{s}</span>
@@ -4163,7 +4163,7 @@ export default function App() {
                           </div>
                         </div>
                         <div>
-                          <h4 className="font-bold text-rose-600 text-xs uppercase mb-1.5">⚠️ Missing Skills / Gaps</h4>
+                          <h4 className="font-bold text-rose-600 text-xs uppercase mb-1.5"><AlertCircle className="h-4 w-4 mr-1 inline text-rose-500" /> Missing Skills / Gaps</h4>
                           <div className="flex flex-wrap gap-1">
                             {fitAnalysis.missing_skills?.map((s: string) => (
                               <span key={s} className="bg-rose-50 border border-rose-100 text-rose-700 text-xs font-semibold px-2 py-0.5 rounded">{s}</span>
