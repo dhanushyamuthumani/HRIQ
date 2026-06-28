@@ -24,7 +24,14 @@ import {
   Star,
   Settings,
   TrendingUp,
-  Plus
+  Plus,
+  MapPin,
+  DollarSign,
+  Folder,
+  Check,
+  Phone,
+  ExternalLink,
+  Lightbulb
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -1251,8 +1258,9 @@ export default function App() {
                   />
                 </div>
 
-                <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-3 text-xs text-indigo-300">
-                  💡 **Demo credentials**: Use **`{selectedLoginRole}`** / **`{selectedLoginRole}123`**
+                <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-3 text-xs text-indigo-300 flex items-center">
+                  <Lightbulb className="h-4 w-4 mr-1.5 text-amber-400 shrink-0" />
+                  <span>**Demo credentials**: Use **`{selectedLoginRole}`** / **`{selectedLoginRole}123`**</span>
                 </div>
 
                 <button 
@@ -1309,8 +1317,8 @@ export default function App() {
           {appliedApplicantResult ? (
             <div className="max-w-xl mx-auto bg-slate-950 border border-slate-800 rounded-3xl p-8 text-center space-y-6 shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1.5 bg-emerald-500" />
-              <div className="h-16 w-16 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mx-auto text-3xl">
-                ✓
+              <div className="h-16 w-16 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mx-auto">
+                <Check className="h-8 w-8 text-emerald-400" />
               </div>
               <div className="space-y-2">
                 <h2 className="text-2xl font-bold text-white">Application Received!</h2>
@@ -1368,13 +1376,13 @@ export default function App() {
                           <div>
                             <h4 className="text-xl font-bold text-white">{job.title}</h4>
                             <div className="flex items-center space-x-3 text-xs text-slate-400 mt-1">
-                              <span>📁 {job.department}</span>
+                              <span className="flex items-center"><Folder className="h-3.5 w-3.5 mr-1 text-slate-400" /> {job.department}</span>
                               <span>•</span>
-                              <span>📍 {job.location}</span>
+                              <span className="flex items-center"><MapPin className="h-3.5 w-3.5 mr-1 text-slate-400" /> {job.location}</span>
                               {job.salary && (
                                 <>
                                   <span>•</span>
-                                  <span>💰 {job.salary}</span>
+                                  <span className="flex items-center"><DollarSign className="h-3.5 w-3.5 mr-0.5 text-slate-400" /> {job.salary}</span>
                                 </>
                               )}
                             </div>
@@ -1661,15 +1669,24 @@ export default function App() {
                         </div>
                         <div className="space-y-1.5 text-xs">
                           <div className="flex items-center justify-between">
-                            <span className="flex items-center text-emerald-600 font-semibold">🟢 Best Fit</span>
+                            <span className="flex items-center text-emerald-600 font-semibold">
+                              <span className="h-2 w-2 rounded-full bg-emerald-500 mr-1.5 inline-block" />
+                              Best Fit
+                            </span>
                             <span className="font-bold text-slate-700">{bestFitsCount} applicants</span>
                           </div>
                           <div className="flex items-center justify-between">
-                            <span className="flex items-center text-amber-500 font-semibold">🟡 Maybe Fit</span>
+                            <span className="flex items-center text-amber-500 font-semibold">
+                              <span className="h-2 w-2 rounded-full bg-amber-500 mr-1.5 inline-block" />
+                              Maybe Fit
+                            </span>
                             <span className="font-bold text-slate-700">{maybesCount} applicants</span>
                           </div>
                           <div className="flex items-center justify-between">
-                            <span className="flex items-center text-rose-500 font-semibold">🔴 Not Fit</span>
+                            <span className="flex items-center text-rose-500 font-semibold">
+                              <span className="h-2 w-2 rounded-full bg-rose-500 mr-1.5 inline-block" />
+                              Not Fit
+                            </span>
                             <span className="font-bold text-slate-700">{notFitsCount} applicants</span>
                           </div>
                         </div>
@@ -1909,12 +1926,12 @@ export default function App() {
             {sysStatus.all_clear ? (
               <span className="flex items-center text-emerald-600 font-semibold">
                 <span className="h-2 w-2 rounded-full bg-emerald-500 mr-1.5 animate-pulse" />
-                🟢 AI Connected
+                AI Connected
               </span>
             ) : (
               <span className="flex items-center text-rose-600 font-semibold">
                 <span className="h-2 w-2 rounded-full bg-rose-500 mr-1.5" />
-                🔴 AI Offline
+                AI Offline
               </span>
             )}
           </div>
@@ -2140,7 +2157,13 @@ export default function App() {
                         <tr key={idx} className="hover:bg-slate-50/20 transition-colors">
                           <td className="py-3.5 px-6">
                             <span className="font-bold text-slate-900">{a.name}</span>
-                            <span className="block text-[10px] text-slate-400 mt-0.5">✉ {a.email} • ☎ {a.phone}</span>
+                            <span className="text-[10px] text-slate-400 mt-0.5 flex items-center space-x-2">
+                              <Mail className="h-3 w-3 inline-block" />
+                              <span>{a.email}</span>
+                              <span>•</span>
+                              <Phone className="h-3 w-3 inline-block" />
+                              <span>{a.phone}</span>
+                            </span>
                           </td>
                           <td className="py-3.5 px-6 font-medium text-slate-600">{a.job_title}</td>
                           <td className="py-3.5 px-6">
@@ -2159,9 +2182,10 @@ export default function App() {
                                 href={a.drive_link} 
                                 target="_blank" 
                                 rel="noreferrer"
-                                className="text-indigo-600 hover:text-indigo-800 font-bold hover:underline flex items-center"
+                                className="text-indigo-600 hover:text-indigo-800 font-bold hover:underline flex items-center space-x-1"
                               >
-                                💾 Open in Drive
+                                <ExternalLink className="h-3.5 w-3.5" />
+                                <span>Open in Drive</span>
                               </a>
                             ) : (
                               <span className="text-slate-400 italic">No Drive connection</span>
