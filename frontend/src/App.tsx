@@ -16,12 +16,15 @@ import {
   FileText, 
   FileSpreadsheet,
   Calendar,
+  Briefcase,
   CheckCircle,
   Clock,
   Mail,
   ClipboardList,
   Star,
-  Settings
+  Settings,
+  TrendingUp,
+  Plus
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -66,7 +69,7 @@ interface Message {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'intake' | 'chat' | 'talent' | 'sourcing' | 'logs' | 'bulk' | 'status' | 'interview' | 'settings'>('talent');
+  const [activeTab, setActiveTab] = useState<'intake' | 'chat' | 'talent' | 'sourcing' | 'logs' | 'bulk' | 'status' | 'interview' | 'settings' | 'jobs' | 'applicants'>('talent');
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [selectedContext, setSelectedContext] = useState<string>("Complete Hub");
   const [sysStatus, setSysStatus] = useState<any>({ all_clear: false, server: { status: "Offline", message: "Loading..." }, model: { status: "Offline", message: "Loading..." } });
@@ -161,6 +164,27 @@ export default function App() {
   
   const [googleStatus, setGoogleStatus] = useState<any>({ connected: false });
   
+  // Role & Session State
+  const [userRole, setUserRole] = useState<'ceo' | 'hr' | 'public' | null>(null);
+  const [selectedLoginRole, setSelectedLoginRole] = useState<'ceo' | 'hr' | 'public' | null>(null);
+  const [usernameInput, setUsernameInput] = useState("");
+  const [passwordInput, setPasswordInput] = useState("");
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [applicants, setApplicants] = useState<any[]>([]);
+  const [jobForm, setJobForm] = useState({
+    title: "",
+    department: "Engineering",
+    location: "Remote",
+    description: "",
+    desired_skills: "",
+    salary: "",
+    status: "Published"
+  });
+  const [selectedJobForApply, setSelectedJobForApply] = useState<any | null>(null);
+  const [applyForm, setApplyForm] = useState({ name: "", email: "", phone: "" });
+  const [applyFile, setApplyFile] = useState<File | null>(null);
+  const [appliedApplicantResult, setAppliedApplicantResult] = useState<any | null>(null);
+  
   // Email sending UI state
   const [emailCc, setEmailCc] = useState("");
   const [emailSubject, setEmailSubject] = useState("Interview Invitation");
@@ -211,12 +235,34 @@ export default function App() {
     }
   };
 
+  const fetchJobs = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/jobs`);
+      const data = await res.json();
+      setJobs(data.jobs || []);
+    } catch (e) {
+      console.error("Error loading jobs", e);
+    }
+  };
+
+  const fetchApplicants = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/applicants`);
+      const data = await res.json();
+      setApplicants(data.applicants || []);
+    } catch (e) {
+      console.error("Error loading applicants", e);
+    }
+  };
+
   // Fetch initial data
   useEffect(() => {
     fetchStatus();
     fetchTalent();
     fetchSettings();
     fetchGoogleStatus();
+    fetchJobs();
+    fetchApplicants();
   }, []);
 
   // Handle Google OAuth callback redirect
@@ -305,6 +351,125 @@ export default function App() {
       }
     } catch (e) { console.error("Error saving settings", e); }
     finally { setLoadingAction(null); }
+  };
+
+  // SaaS Event Handlers
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedLoginRole === 'hr') {
+      if (usernameInput === 'hr' && passwordInput === 'hr123') {
+        setUserRole('hr');
+        setActiveTab('talent');
+        setUsernameInput("");
+        setPasswordInput("");
+      } else {
+        alert("❌ Invalid HR credentials. Hint: use hr / hr123");
+      }
+    } else if (selectedLoginRole === 'ceo') {
+      if (usernameInput === 'ceo' && passwordInput === 'ceo123') {
+        setUserRole('ceo');
+        setActiveTab('talent'); // In CEO view, activeTab acts as dashboard tab selection
+        setUsernameInput("");
+        setPasswordInput("");
+      } else {
+        alert("❌ Invalid CEO credentials. Hint: use ceo / ceo123");
+      }
+    }
+  };
+
+  const submitJob = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!jobForm.title || !jobForm.description) return;
+    const newJob = {
+      ...jobForm,
+      id: Math.random().toString(36).substr(2, 9),
+      created_at: new Date().toISOString().split('T')[0]
+    };
+    const updatedJobs = [...jobs, newJob];
+    try {
+      const res = await fetch(`${API_BASE}/api/jobs/save`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedJobs)
+      });
+      const data = await res.json();
+      if (data.success) {
+        setJobs(updatedJobs);
+        setJobForm({ title: "", department: "Engineering", location: "Remote", description: "", desired_skills: "", salary: "", status: "Published" });
+        alert("🎉 Job successfully published to career portal!");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const deleteJob = async (jobId: string) => {
+    if (!window.confirm("Are you sure you want to remove this job position?")) return;
+    const updatedJobs = jobs.filter(j => j.id !== jobId);
+    try {
+      const res = await fetch(`${API_BASE}/api/jobs/save`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedJobs)
+      });
+      const data = await res.json();
+      if (data.success) {
+        setJobs(updatedJobs);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const submitApplication = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedJobForApply || !applyFile || !applyForm.name || !applyForm.email) return;
+    
+    setLoadingAction("apply");
+    const formData = new FormData();
+    formData.append("job_id", selectedJobForApply.id);
+    formData.append("name", applyForm.name);
+    formData.append("email", applyForm.email);
+    formData.append("phone", applyForm.phone);
+    formData.append("resume", applyFile);
+    
+    try {
+      const res = await fetch(`${API_BASE}/api/jobs/apply`, {
+        method: "POST",
+        body: formData
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAppliedApplicantResult(data.applicant);
+        setApplyForm({ name: "", email: "", phone: "" });
+        setApplyFile(null);
+        fetchApplicants();
+      } else {
+        alert("❌ Application failed: " + (data.detail || "Unknown error"));
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert("❌ Application error: " + err.message);
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  const deleteApplicantFn = async (applicantId: string) => {
+    if (!window.confirm("Are you sure you want to delete this applicant response?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/applicants/delete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: applicantId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setApplicants(data.applicants || []);
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const sendInviteEmail = async () => {
@@ -971,6 +1136,663 @@ export default function App() {
 
   const allTags = Array.from(new Set(candidates.map(c => c.tag || "Global")));
 
+  if (userRole === null) {
+    return (
+      <div className="min-h-screen w-screen overflow-y-auto bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-6 relative font-sans">
+        {/* Decorative blobs */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-600/10 rounded-full blur-[120px] pointer-events-none" />
+        
+        <div className="max-w-4xl w-full z-10 space-y-8">
+          <div className="text-center space-y-3">
+            <div className="inline-flex items-center space-x-2 bg-indigo-500/10 border border-indigo-500/20 px-4 py-1.5 rounded-full text-indigo-400 text-xs font-semibold tracking-wider uppercase">
+              <Sparkles className="h-3.5 w-3.5 mr-1" /> Next-Gen SaaS Platform
+            </div>
+            <h1 className="text-5xl font-black tracking-tight text-white sm:text-6xl">
+              HRIQ <span className="text-indigo-500">Enterprise</span>
+            </h1>
+            <p className="text-slate-400 text-sm max-w-lg mx-auto">
+              Automated AI resume evaluation, careers portal, and multi-role executive analytics.
+            </p>
+          </div>
+
+          {!selectedLoginRole ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+              {/* Careers Card */}
+              <button 
+                onClick={() => setUserRole('public')}
+                className="group relative bg-slate-900/60 border border-slate-800 hover:border-indigo-500/50 rounded-2xl p-6 text-left transition-all hover:-translate-y-1 hover:shadow-xl duration-300"
+              >
+                <div className="h-12 w-12 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform mb-4">
+                  <Globe className="h-6 w-6" />
+                </div>
+                <h3 className="text-lg font-bold text-white mb-2">Careers Portal</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  View open roles, submit resume applications, and get instant AI screening responses.
+                </p>
+                <div className="mt-4 text-xs font-semibold text-indigo-400 flex items-center group-hover:translate-x-1 transition-transform">
+                  Enter Portal &rarr;
+                </div>
+              </button>
+
+              {/* HR Card */}
+              <button 
+                onClick={() => setSelectedLoginRole('hr')}
+                className="group relative bg-slate-900/60 border border-slate-800 hover:border-indigo-500/50 rounded-2xl p-6 text-left transition-all hover:-translate-y-1 hover:shadow-xl duration-300"
+              >
+                <div className="h-12 w-12 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform mb-4">
+                  <Users className="h-6 w-6" />
+                </div>
+                <h3 className="text-lg font-bold text-white mb-2">HR Operations</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Manage active jobs, evaluate candidates, schedule interviews, and trigger bulk outreach.
+                </p>
+                <div className="mt-4 text-xs font-semibold text-emerald-400 flex items-center group-hover:translate-x-1 transition-transform">
+                  Login to Console &rarr;
+                </div>
+              </button>
+
+              {/* CEO Card */}
+              <button 
+                onClick={() => setSelectedLoginRole('ceo')}
+                className="group relative bg-slate-900/60 border border-slate-800 hover:border-indigo-500/50 rounded-2xl p-6 text-left transition-all hover:-translate-y-1 hover:shadow-xl duration-300"
+              >
+                <div className="h-12 w-12 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform mb-4">
+                  <Award className="h-6 w-6" />
+                </div>
+                <h3 className="text-lg font-bold text-white mb-2">CEO Dashboard</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Monitor executive hiring metrics, role distribution, and candidate match qualities.
+                </p>
+                <div className="mt-4 text-xs font-semibold text-amber-400 flex items-center group-hover:translate-x-1 transition-transform">
+                  Access Executive View &rarr;
+                </div>
+              </button>
+            </div>
+          ) : (
+            <div className="max-w-md mx-auto bg-slate-900/80 border border-slate-800 rounded-3xl p-8 shadow-2xl relative overflow-hidden backdrop-blur-md">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500" />
+              
+              <button 
+                onClick={() => setSelectedLoginRole(null)}
+                className="text-slate-400 hover:text-white text-xs mb-6 inline-flex items-center"
+              >
+                &larr; Back to roles
+              </button>
+
+              <h2 className="text-2xl font-extrabold text-white mb-2 uppercase tracking-wide">
+                {selectedLoginRole === 'hr' ? 'HR Console Login' : 'CEO Executive Login'}
+              </h2>
+              <p className="text-xs text-slate-400 mb-6">
+                Please enter your credentials below to securely access your dashboard.
+              </p>
+
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Username</label>
+                  <input 
+                    type="text" 
+                    value={usernameInput}
+                    onChange={e => setUsernameInput(e.target.value)}
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-white outline-none focus:border-indigo-500 transition-colors"
+                    placeholder={`Enter '${selectedLoginRole}'`}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Password</label>
+                  <input 
+                    type="password" 
+                    value={passwordInput}
+                    onChange={e => setPasswordInput(e.target.value)}
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-white outline-none focus:border-indigo-500 transition-colors"
+                    placeholder={`Enter '${selectedLoginRole}123'`}
+                    required
+                  />
+                </div>
+
+                <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-3 text-xs text-indigo-300">
+                  💡 **Demo credentials**: Use **`{selectedLoginRole}`** / **`{selectedLoginRole}123`**
+                </div>
+
+                <button 
+                  type="submit"
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold py-3 rounded-lg text-sm shadow-lg shadow-indigo-500/20 transition-all"
+                >
+                  Log In &rarr;
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (userRole === 'public') {
+    const publishedJobs = jobs.filter(j => j.status === 'Published');
+    return (
+      <div className="min-h-screen w-screen bg-slate-900 text-slate-100 font-sans flex flex-col">
+        {/* Careers Header */}
+        <header className="bg-slate-950 border-b border-slate-800 py-4 px-8 shrink-0 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white">IQ</div>
+            <span className="font-extrabold text-lg tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">HRIQ Careers</span>
+          </div>
+          <button 
+            onClick={() => {
+              setUserRole(null);
+              setSelectedLoginRole(null);
+              setAppliedApplicantResult(null);
+            }}
+            className="text-xs border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white px-4 py-2 rounded-lg transition-colors"
+          >
+            SaaS Dashboard &rarr;
+          </button>
+        </header>
+
+        {/* Hero Section */}
+        <div className="bg-gradient-to-b from-slate-950 to-slate-900 py-16 px-8 text-center relative overflow-hidden">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2/3 h-64 bg-indigo-500/10 rounded-full blur-[80px] pointer-events-none" />
+          <div className="max-w-2xl mx-auto space-y-4 z-10 relative">
+            <h1 className="text-4xl font-extrabold text-white tracking-tight sm:text-5xl">
+              Build the Future With Us
+            </h1>
+            <p className="text-slate-400 text-sm max-w-lg mx-auto leading-relaxed">
+              Explore our current open positions. Apply in under a minute with our quick upload and receive instantaneous status evaluation from HRIQ AI Brain.
+            </p>
+          </div>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-1 max-w-6xl w-full mx-auto px-6 py-12">
+          {appliedApplicantResult ? (
+            <div className="max-w-xl mx-auto bg-slate-950 border border-slate-800 rounded-3xl p-8 text-center space-y-6 shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-emerald-500" />
+              <div className="h-16 w-16 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mx-auto text-3xl">
+                ✓
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-2xl font-bold text-white">Application Received!</h2>
+                <p className="text-xs text-slate-400">
+                  Thank you, **{appliedApplicantResult.name}**! Your profile has been scanned and recorded.
+                </p>
+              </div>
+
+              {/* AI Feedback Card */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-left space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <span className="text-xs font-semibold text-indigo-400 uppercase tracking-widest flex items-center">
+                    <Sparkles className="h-3.5 w-3.5 mr-1" /> HRIQ AI Matching Profile
+                  </span>
+                  <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${
+                    appliedApplicantResult.status === 'Best Fit' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                    appliedApplicantResult.status === 'Maybe' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                    'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                  }`}>
+                    {appliedApplicantResult.status}
+                  </span>
+                </div>
+                <div className="flex items-baseline space-x-2">
+                  <span className="text-slate-400 text-xs">Match Score:</span>
+                  <span className="text-2xl font-black text-white">{appliedApplicantResult.score}%</span>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed italic">
+                  "{appliedApplicantResult.summary}"
+                </p>
+              </div>
+
+              <button 
+                onClick={() => setAppliedApplicantResult(null)}
+                className="w-full bg-slate-900 hover:bg-slate-850 text-white font-bold py-3 rounded-lg text-xs transition-colors border border-slate-800"
+              >
+                &larr; View Other Open Roles
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {/* Jobs List */}
+              <div className="md:col-span-2 space-y-6">
+                <h3 className="text-lg font-bold text-white flex items-center">
+                  Open Positions ({publishedJobs.length})
+                </h3>
+                {publishedJobs.length === 0 ? (
+                  <div className="bg-slate-950 border border-slate-800 rounded-2xl p-12 text-center text-slate-500">
+                    No active job listings at the moment. Please check back later!
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {publishedJobs.map(job => (
+                      <div key={job.id} className="bg-slate-950 border border-slate-800 rounded-2xl p-6 space-y-4 hover:border-indigo-500/40 transition-colors">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h4 className="text-xl font-bold text-white">{job.title}</h4>
+                            <div className="flex items-center space-x-3 text-xs text-slate-400 mt-1">
+                              <span>📁 {job.department}</span>
+                              <span>•</span>
+                              <span>📍 {job.location}</span>
+                              {job.salary && (
+                                <>
+                                  <span>•</span>
+                                  <span>💰 {job.salary}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <button 
+                            onClick={() => {
+                              setSelectedJobForApply(job);
+                              setApplyForm({ name: "", email: "", phone: "" });
+                              setApplyFile(null);
+                            }}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-lg transition-colors shadow-md"
+                          >
+                            Apply Now
+                          </button>
+                        </div>
+                        <div className="text-xs text-slate-300 leading-relaxed whitespace-pre-line">
+                          {job.description}
+                        </div>
+                        {job.desired_skills && (
+                          <div className="flex flex-wrap gap-1.5 pt-2">
+                            {job.desired_skills.split(',').map((skill: string) => (
+                              <span key={skill} className="bg-slate-900 border border-slate-800 text-slate-300 text-[10px] px-2 py-0.5 rounded">
+                                {skill.trim()}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Sidebar Info */}
+              <div className="space-y-6">
+                <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6 space-y-4">
+                  <h4 className="text-sm font-bold text-white uppercase tracking-wider">Hiring Process</h4>
+                  <div className="space-y-4 text-xs font-semibold">
+                    <div className="flex space-x-3">
+                      <div className="h-6 w-6 rounded-full bg-indigo-500/10 text-indigo-400 flex items-center justify-center font-bold shrink-0">1</div>
+                      <div>
+                        <p className="font-semibold text-white">Quick Apply</p>
+                        <p className="text-slate-400 mt-0.5">Submit your resume and details.</p>
+                      </div>
+                    </div>
+                    <div className="flex space-x-3">
+                      <div className="h-6 w-6 rounded-full bg-indigo-500/10 text-indigo-400 flex items-center justify-center font-bold shrink-0">2</div>
+                      <div>
+                        <p className="font-semibold text-white">AI Screening</p>
+                        <p className="text-slate-400 mt-0.5">HRIQ Brain evaluates candidate fits instantly.</p>
+                      </div>
+                    </div>
+                    <div className="flex space-x-3">
+                      <div className="h-6 w-6 rounded-full bg-indigo-500/10 text-indigo-400 flex items-center justify-center font-bold shrink-0">3</div>
+                      <div>
+                        <p className="font-semibold text-white">HR Outreach</p>
+                        <p className="text-slate-400 mt-0.5">We schedule technical interview deep dives.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* APPLY MODAL */}
+        {selectedJobForApply && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm p-4">
+            <div className="bg-slate-950 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-5 relative shadow-2xl">
+              <button 
+                onClick={() => setSelectedJobForApply(null)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+              <div>
+                <h3 className="text-lg font-bold text-white">Apply for Position</h3>
+                <p className="text-xs text-indigo-400 font-medium mt-0.5">{selectedJobForApply.title}</p>
+              </div>
+
+              <form onSubmit={submitApplication} className="space-y-4 text-xs">
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">Full Name</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={applyForm.name}
+                    onChange={e => setApplyForm({...applyForm, name: e.target.value})}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-white outline-none focus:border-indigo-500"
+                    placeholder="John Doe"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">Email</label>
+                    <input 
+                      type="email" 
+                      required
+                      value={applyForm.email}
+                      onChange={e => setApplyForm({...applyForm, email: e.target.value})}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-white outline-none focus:border-indigo-500"
+                      placeholder="john@example.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">Phone</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={applyForm.phone}
+                      onChange={e => setApplyForm({...applyForm, phone: e.target.value})}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-white outline-none focus:border-indigo-500"
+                      placeholder="+91 99999 99999"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">Upload Resume (PDF/DOCX)</label>
+                  <input 
+                    type="file" 
+                    required
+                    accept=".pdf,.docx"
+                    onChange={e => {
+                      if (e.target.files && e.target.files.length > 0) {
+                        setApplyFile(e.target.files[0]);
+                      }
+                    }}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-white outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                {loadingAction === 'apply' ? (
+                  <div className="space-y-2 text-center py-2">
+                    <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                      <div className="h-full bg-indigo-500 animate-pulse w-2/3 mx-auto" />
+                    </div>
+                    <span className="text-[10px] text-indigo-400 animate-pulse font-medium">Ollama screening & Google Drive uploading...</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-3 pt-2">
+                    <button 
+                      type="button"
+                      onClick={() => setSelectedJobForApply(null)}
+                      className="flex-1 bg-slate-900 hover:bg-slate-850 text-slate-400 hover:text-white font-bold py-2.5 rounded-lg border border-slate-800 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      type="submit"
+                      className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-lg shadow-md transition-colors"
+                    >
+                      Submit &rarr;
+                    </button>
+                  </div>
+                )}
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (userRole === 'ceo') {
+    const totalJobsCount = jobs.length;
+    const totalApplicantsCount = applicants.length;
+    const bestFitsCount = applicants.filter(a => a.status === 'Best Fit').length;
+    const maybesCount = applicants.filter(a => a.status === 'Maybe').length;
+    const notFitsCount = applicants.filter(a => a.status === 'Not Fit').length;
+    const bestFitPercent = totalApplicantsCount > 0 ? Math.round((bestFitsCount / totalApplicantsCount) * 100) : 0;
+    
+    const fitData = [
+      { name: 'Best Fit', value: bestFitsCount, color: '#10B981' },
+      { name: 'Maybe', value: maybesCount, color: '#F59E0B' },
+      { name: 'Not Fit', value: notFitsCount, color: '#EF4444' }
+    ].filter(d => d.value > 0);
+
+    const jobData = jobs.map(j => {
+      const count = applicants.filter(a => a.job_id === j.id).length;
+      return { name: j.title.substring(0, 15) + (j.title.length > 15 ? '...' : ''), count };
+    });
+
+    return (
+      <div className="flex h-screen w-screen overflow-hidden bg-slate-50 text-slate-900 font-sans">
+        {/* CEO Sidebar */}
+        <aside className="w-64 flex flex-col bg-white border-r border-slate-200">
+          <div className="p-6 flex flex-col items-center border-b border-slate-100">
+            <img src="/logo.png" alt="HRIQ" className="h-16 object-contain" />
+            <span className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-widest">Executive Analytics</span>
+          </div>
+
+          <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
+            <div className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">CEO Panel</div>
+            <button 
+              onClick={() => setActiveTab('talent')}
+              className={`w-full flex items-center px-4 py-3 text-sm font-semibold rounded-lg transition-all ${activeTab === 'talent' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:bg-slate-50'}`}
+            >
+              <TrendingUp className="h-5 w-5 mr-3" /> Dashboard Overview
+            </button>
+            <button 
+              onClick={() => setActiveTab('jobs')}
+              className={`w-full flex items-center px-4 py-3 text-sm font-semibold rounded-lg transition-all ${activeTab === 'jobs' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:bg-slate-50'}`}
+            >
+              <Briefcase className="h-5 w-5 mr-3" /> Open Positions
+            </button>
+          </nav>
+
+          <div className="p-4 border-t border-slate-100 space-y-2">
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-center">
+              <p className="text-[10px] font-bold text-slate-400 uppercase">Logged in as</p>
+              <p className="text-xs font-semibold text-slate-700 mt-0.5">CEO (Executive)</p>
+            </div>
+            <button 
+              onClick={() => {
+                setUserRole(null);
+                setSelectedLoginRole(null);
+              }}
+              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 rounded-lg text-xs transition-colors"
+            >
+              Logout Dashboard
+            </button>
+          </div>
+        </aside>
+
+        {/* CEO Content Panel */}
+        <main className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-slate-50/50">
+          <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0">
+            <h1 className="text-lg font-bold text-slate-800">CEO Executive Board</h1>
+          </header>
+
+          <div className="flex-1 p-8 space-y-6 overflow-y-auto">
+            {activeTab === 'talent' ? (
+              <>
+                {/* Executive Scorecard Row */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                  <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-1">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Active Jobs</p>
+                    <p className="text-3xl font-black text-slate-900">{totalJobsCount}</p>
+                  </div>
+                  <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-1">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Applications</p>
+                    <p className="text-3xl font-black text-slate-900">{totalApplicantsCount}</p>
+                  </div>
+                  <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-1">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Best-Fit Match Rate</p>
+                    <p className="text-3xl font-black text-emerald-600">{bestFitPercent}%</p>
+                  </div>
+                  <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-1">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Hiring Pipeline</p>
+                    <p className="text-3xl font-black text-indigo-600">{interviews.length} Interviews</p>
+                  </div>
+                </div>
+
+                {/* Analytical Charts */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Fit Distribution Pie Chart */}
+                  <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4 md:col-span-1 flex flex-col justify-between">
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-800">Match Quality Distribution</h4>
+                      <p className="text-xs text-slate-400 mt-0.5">Real-time candidate categorization summary.</p>
+                    </div>
+                    {totalApplicantsCount === 0 ? (
+                      <div className="text-center text-xs text-slate-400 py-12">No data available</div>
+                    ) : (
+                      <>
+                        <div className="h-44 w-full flex items-center justify-center">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={fitData}
+                                innerRadius={45}
+                                outerRadius={65}
+                                paddingAngle={3}
+                                dataKey="value"
+                              >
+                                {fitData.map((entry, idx) => (
+                                  <Cell key={`cell-${idx}`} fill={entry.color} />
+                                ))}
+                              </Pie>
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                        <div className="space-y-1.5 text-xs">
+                          <div className="flex items-center justify-between">
+                            <span className="flex items-center text-emerald-600 font-semibold">🟢 Best Fit</span>
+                            <span className="font-bold text-slate-700">{bestFitsCount} applicants</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="flex items-center text-amber-500 font-semibold">🟡 Maybe Fit</span>
+                            <span className="font-bold text-slate-700">{maybesCount} applicants</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="flex items-center text-rose-500 font-semibold">🔴 Not Fit</span>
+                            <span className="font-bold text-slate-700">{notFitsCount} applicants</span>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Applicants Per Job Bar Chart */}
+                  <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4 md:col-span-2 flex flex-col justify-between">
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-800">Applications per Role</h4>
+                      <p className="text-xs text-slate-400 mt-0.5">Total submissions across active positions.</p>
+                    </div>
+                    {totalApplicantsCount === 0 ? (
+                      <div className="text-center text-xs text-slate-400 py-24">No data available</div>
+                    ) : (
+                      <div className="h-60 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={jobData}>
+                            <XAxis dataKey="name" stroke="#94A3B8" fontSize={11} tickLine={false} />
+                            <YAxis stroke="#94A3B8" fontSize={11} tickLine={false} allowDecimals={false} />
+                            <Tooltip cursor={{ fill: 'rgba(79, 70, 229, 0.05)' }} />
+                            <Bar dataKey="count" fill="#4F46E5" radius={[4, 4, 0, 0]} barSize={35} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* CEO View Applicants Review Grid */}
+                <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                  <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+                    <h4 className="text-sm font-bold text-slate-800">Top Candidate Submissions</h4>
+                  </div>
+                  <div className="overflow-x-auto text-xs">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-200 text-slate-400 bg-slate-50/50 uppercase tracking-wider font-semibold font-sans">
+                          <th className="py-3 px-6">Name</th>
+                          <th className="py-3 px-6">Target Role</th>
+                          <th className="py-3 px-6">Fit Quality</th>
+                          <th className="py-3 px-6">Screening Summary</th>
+                          <th className="py-3 px-6">Applied Date</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-slate-700">
+                        {applicants.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="py-8 text-center text-slate-400">No applicants yet. Share the careers link to gather candidates.</td>
+                          </tr>
+                        ) : (
+                          applicants.slice(0, 10).map((a, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                              <td className="py-3.5 px-6 font-bold text-slate-900">{a.name}</td>
+                              <td className="py-3.5 px-6 font-medium text-indigo-600">{a.job_title}</td>
+                              <td className="py-3.5 px-6">
+                                <span className={`font-bold px-2.5 py-0.5 rounded text-[10px] ${
+                                  a.status === 'Best Fit' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                                  a.status === 'Maybe' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
+                                  'bg-rose-50 text-rose-700 border border-rose-100'
+                                }`}>
+                                  {a.status} ({a.score}%)
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-6 italic text-slate-500 max-w-sm truncate">{a.summary}</td>
+                              <td className="py-3.5 px-6 text-slate-400">{a.date_applied}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* CEO VIEW OPEN JOBS TAB */
+              <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+                  <h4 className="text-sm font-bold text-slate-800">Job Board Active Openings</h4>
+                </div>
+                <div className="overflow-x-auto text-xs">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-slate-400 bg-slate-50/50 uppercase tracking-wider font-semibold font-sans">
+                        <th className="py-3 px-6">Job Title</th>
+                        <th className="py-3 px-6">Department</th>
+                        <th className="py-3 px-6">Location</th>
+                        <th className="py-3 px-6">Salary Range</th>
+                        <th className="py-3 px-6">Published Date</th>
+                        <th className="py-3 px-6">Applicants</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-slate-700">
+                      {jobs.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="py-8 text-center text-slate-400">No active job listings published by HR yet.</td>
+                        </tr>
+                      ) : (
+                        jobs.map(j => (
+                          <tr key={j.id} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="py-3.5 px-6 font-bold text-slate-900">{j.title}</td>
+                            <td className="py-3.5 px-6">{j.department}</td>
+                            <td className="py-3.5 px-6 font-medium text-slate-500">{j.location}</td>
+                            <td className="py-3.5 px-6 font-semibold text-slate-700">{j.salary || "Not Specified"}</td>
+                            <td className="py-3.5 px-6 text-slate-400">{j.created_at}</td>
+                            <td className="py-3.5 px-6 font-bold text-indigo-600">
+                              {applicants.filter(a => a.job_id === j.id).length} candidates
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-50 text-slate-900 ambient-bg font-sans">
       
@@ -1047,22 +1869,55 @@ export default function App() {
             <Settings className="h-5 w-5 mr-3" />
             Settings
           </button>
+          
+          <div className="border-t border-slate-100 my-2 pt-2">
+            <div className="px-4 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Careers & ATS</div>
+            <button 
+              onClick={() => setActiveTab('jobs')}
+              className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all ${activeTab === 'jobs' ? 'bg-indigo-50 text-indigo-600 font-semibold' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
+            >
+              <Briefcase className="h-5 w-5 mr-3 text-indigo-500" />
+              Job Manager
+            </button>
+            <button 
+              onClick={() => setActiveTab('applicants')}
+              className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all ${activeTab === 'applicants' ? 'bg-indigo-50 text-indigo-600 font-semibold' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
+            >
+              <ClipboardList className="h-5 w-5 mr-3 text-emerald-500" />
+              Applicants (ATS)
+            </button>
+          </div>
         </nav>
 
-        {/* Global Connection Badge */}
-        <div className="p-4 border-t border-slate-100 flex items-center justify-between text-xs">
-          <span className="text-slate-400 font-medium">Model Status:</span>
-          {sysStatus.all_clear ? (
-            <span className="flex items-center text-emerald-600 font-semibold">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 mr-1.5 animate-pulse" />
-              🟢 AI Connected
-            </span>
-          ) : (
-            <span className="flex items-center text-rose-600 font-semibold">
-              <span className="h-2 w-2 rounded-full bg-rose-500 mr-1.5" />
-              🔴 AI Offline
-            </span>
-          )}
+        {/* User logout & global status */}
+        <div className="p-4 border-t border-slate-100 space-y-2.5">
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 flex items-center justify-between text-xs">
+            <span className="font-semibold text-slate-600">Role: HR Partner</span>
+            <button 
+              onClick={() => {
+                setUserRole(null);
+                setSelectedLoginRole(null);
+              }}
+              className="text-[10px] text-rose-600 hover:text-rose-800 font-bold uppercase hover:underline bg-transparent border-none p-0 cursor-pointer"
+            >
+              Logout
+            </button>
+          </div>
+          
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-slate-400 font-medium">Model Status:</span>
+            {sysStatus.all_clear ? (
+              <span className="flex items-center text-emerald-600 font-semibold">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 mr-1.5 animate-pulse" />
+                🟢 AI Connected
+              </span>
+            ) : (
+              <span className="flex items-center text-rose-600 font-semibold">
+                <span className="h-2 w-2 rounded-full bg-rose-500 mr-1.5" />
+                🔴 AI Offline
+              </span>
+            )}
+          </div>
         </div>
       </aside>
 
@@ -1090,6 +1945,279 @@ export default function App() {
 
         <div className="flex-1 p-8 overflow-y-auto space-y-6">
           
+          {/* TAB: JOB MANAGER */}
+          <div className={activeTab === 'jobs' ? 'space-y-6' : 'hidden'}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Job Board Manager</h2>
+                <p className="text-slate-500 text-sm mt-0.5">Post and manage active openings on your public Career Portal.</p>
+              </div>
+              <div className="bg-indigo-50 border border-indigo-100 rounded-lg px-4 py-2 text-xs text-indigo-700 font-semibold flex items-center">
+                🔗 Public Careers Link: 
+                <a 
+                  href="https://frontend-pink-phi-73.vercel.app" 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="ml-1.5 underline hover:text-indigo-900"
+                >
+                  frontend-pink-phi-73.vercel.app (Portal)
+                </a>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Job Posting Form */}
+              <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4 lg:col-span-1">
+                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center">
+                  <Plus className="h-4 w-4 mr-1 text-indigo-500" /> Create Job Opening
+                </h3>
+                <form onSubmit={submitJob} className="space-y-3.5 text-xs">
+                  <div>
+                    <label className="block font-semibold text-slate-500 mb-1">Job Title</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={jobForm.title}
+                      onChange={e => setJobForm({...jobForm, title: e.target.value})}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-indigo-500"
+                      placeholder="e.g. Lead Software Engineer"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-semibold text-slate-500 mb-1">Department</label>
+                      <select
+                        value={jobForm.department}
+                        onChange={e => setJobForm({...jobForm, department: e.target.value})}
+                        className="w-full border border-slate-200 bg-white rounded-lg px-2.5 py-2 outline-none focus:border-indigo-500"
+                      >
+                        <option value="Engineering">Engineering</option>
+                        <option value="Product">Product</option>
+                        <option value="Design">Design</option>
+                        <option value="Marketing">Marketing</option>
+                        <option value="Sales">Sales</option>
+                        <option value="Operations">Operations</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-500 mb-1">Location</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={jobForm.location}
+                        onChange={e => setJobForm({...jobForm, location: e.target.value})}
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-indigo-500"
+                        placeholder="e.g. Remote / New York"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-500 mb-1">Salary Range (Optional)</label>
+                    <input 
+                      type="text" 
+                      value={jobForm.salary}
+                      onChange={e => setJobForm({...jobForm, salary: e.target.value})}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-indigo-500"
+                      placeholder="e.g. $120,000 - $140,000"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-500 mb-1">Required Skills (Comma separated)</label>
+                    <input 
+                      type="text" 
+                      value={jobForm.desired_skills}
+                      onChange={e => setJobForm({...jobForm, desired_skills: e.target.value})}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-indigo-500"
+                      placeholder="React, Node.js, AWS, TypeScript"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-500 mb-1">Job Description & Responsibilities</label>
+                    <textarea 
+                      rows={4}
+                      required
+                      value={jobForm.description}
+                      onChange={e => setJobForm({...jobForm, description: e.target.value})}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-indigo-500"
+                      placeholder="Write brief description and requirements..."
+                    />
+                  </div>
+
+                  <button 
+                    type="submit"
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-lg shadow-sm transition-colors"
+                  >
+                    Publish to Portal &rarr;
+                  </button>
+                </form>
+              </div>
+
+              {/* Active Jobs List */}
+              <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden lg:col-span-2">
+                <div className="px-6 py-4 border-b border-slate-200 bg-slate-50/50">
+                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Active Openings</h3>
+                </div>
+                <div className="overflow-x-auto text-xs">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-slate-400 bg-slate-50 font-semibold uppercase tracking-wider">
+                        <th className="py-3 px-6">Role Details</th>
+                        <th className="py-3 px-6">Department</th>
+                        <th className="py-3 px-6">Salary</th>
+                        <th className="py-3 px-6">Applicants</th>
+                        <th className="py-3 px-6">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-slate-700">
+                      {jobs.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="py-8 text-center text-slate-400">No active job openings. Post one to gather candidate submissions.</td>
+                        </tr>
+                      ) : (
+                        jobs.map(j => (
+                          <tr key={j.id} className="hover:bg-slate-50/20 transition-colors">
+                            <td className="py-3.5 px-6">
+                              <span className="font-bold text-slate-900">{j.title}</span>
+                              <span className="block text-[10px] text-slate-400 mt-0.5">📍 {j.location} • Published {j.created_at}</span>
+                            </td>
+                            <td className="py-3.5 px-6 font-medium text-slate-500">{j.department}</td>
+                            <td className="py-3.5 px-6 font-semibold">{j.salary || "N/A"}</td>
+                            <td className="py-3.5 px-6 font-bold text-indigo-600">
+                              {applicants.filter(a => a.job_id === j.id).length} candidates
+                            </td>
+                            <td className="py-3.5 px-6">
+                              <button 
+                                onClick={() => deleteJob(j.id)}
+                                className="text-rose-600 hover:text-rose-800 font-bold hover:underline"
+                              >
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* TAB: APPLICANTS ATS */}
+          <div className={activeTab === 'applicants' ? 'space-y-6' : 'hidden'}>
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Applicant Responses (ATS)</h2>
+              <p className="text-slate-500 text-sm mt-0.5">Review candidate submissions ranked by HRIQ AI Matching logic.</p>
+            </div>
+
+            {/* Applicant grid grouped by fit quality */}
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Candidate Screenings</h3>
+              </div>
+              <div className="overflow-x-auto text-xs">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-slate-400 bg-slate-50 font-semibold uppercase tracking-wider">
+                      <th className="py-3 px-6">Candidate Details</th>
+                      <th className="py-3 px-6">Target Role</th>
+                      <th className="py-3 px-6">Fit Status & Score</th>
+                      <th className="py-3 px-6">AI Evaluation Notes</th>
+                      <th className="py-3 px-6">Resume storage</th>
+                      <th className="py-3 px-6">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-700">
+                    {applicants.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-slate-400">No applicants have submitted responses yet.</td>
+                      </tr>
+                    ) : (
+                      applicants.map((a, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50/20 transition-colors">
+                          <td className="py-3.5 px-6">
+                            <span className="font-bold text-slate-900">{a.name}</span>
+                            <span className="block text-[10px] text-slate-400 mt-0.5">✉ {a.email} • ☎ {a.phone}</span>
+                          </td>
+                          <td className="py-3.5 px-6 font-medium text-slate-600">{a.job_title}</td>
+                          <td className="py-3.5 px-6">
+                            <span className={`font-bold px-2.5 py-0.5 rounded text-[10px] ${
+                              a.status === 'Best Fit' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                              a.status === 'Maybe' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
+                              'bg-rose-50 text-rose-700 border border-rose-100'
+                            }`}>
+                              {a.status} ({a.score}%)
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-6 max-w-xs leading-relaxed italic text-slate-500">{a.summary}</td>
+                          <td className="py-3.5 px-6">
+                            {a.drive_link && a.drive_link !== "#" ? (
+                              <a 
+                                href={a.drive_link} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                className="text-indigo-600 hover:text-indigo-800 font-bold hover:underline flex items-center"
+                              >
+                                💾 Open in Drive
+                              </a>
+                            ) : (
+                              <span className="text-slate-400 italic">No Drive connection</span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-6 space-x-3">
+                            <button 
+                              onClick={() => {
+                                setSelectedInterviewCand({
+                                  full_name: a.name,
+                                  email: a.email,
+                                  phone: a.phone,
+                                  working_role: a.job_title,
+                                  one_liner: `Candidate for ${a.job_title}`,
+                                  technologies: [],
+                                  total_experience_years: 0,
+                                  industry_domain: "Other",
+                                  technical_evaluation: a.summary,
+                                  summary: a.summary,
+                                  elevator_pitch: "",
+                                  tag: "ATS",
+                                  is_duplicate: "No",
+                                  resume_score: a.score,
+                                  source_file: "",
+                                  raw_text: ""
+                                });
+                                setScheduleForm({
+                                  date: "",
+                                  time: "",
+                                  platform: "Google Meet",
+                                  interviewer: settings.full_name || "",
+                                  role: a.job_title
+                                });
+                                setActiveTab("interview");
+                                setInterviewTab("schedule");
+                              }}
+                              className="text-emerald-600 hover:text-emerald-800 font-bold hover:underline"
+                            >
+                              Schedule
+                            </button>
+                            <button 
+                              onClick={() => deleteApplicantFn(a.id)}
+                              className="text-rose-600 hover:text-rose-800 font-bold hover:underline"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
           {/* TAB: INTAKE HUB */}
           <div className={activeTab === 'intake' ? 'space-y-6 max-w-4xl' : 'hidden'}>
               <div>
