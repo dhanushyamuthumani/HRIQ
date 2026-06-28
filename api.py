@@ -124,7 +124,8 @@ def get_google_auth_url(redirect_uri: str):
     scopes = [
         "https://www.googleapis.com/auth/calendar.events",
         "https://www.googleapis.com/auth/gmail.send",
-        "https://www.googleapis.com/auth/tasks"
+        "https://www.googleapis.com/auth/tasks",
+        "https://www.googleapis.com/auth/drive.file"
     ]
     scope_str = " ".join(scopes)
     params = {
@@ -842,6 +843,227 @@ def cancel_interview(payload: dict):
     _save_pipeline(pipeline)
     return {"success": True, "interviews": pipeline["interviews"]}
 
+# --- SaaS Career Portal & Google Drive Integration ---
+_JOBS_FILE = Path("outputs/jobs.json")
+_APPLICANTS_FILE = Path("outputs/applicants.json")
+
+def _load_jobs():
+    if _JOBS_FILE.exists():
+        try:
+            return json.loads(_JOBS_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return []
+
+def _save_jobs(data):
+    _JOBS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    _JOBS_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+def _load_applicants():
+    if _APPLICANTS_FILE.exists():
+        try:
+            return json.loads(_APPLICANTS_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return []
+
+def _save_applicants(data):
+    _APPLICANTS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    _APPLICANTS_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+def upload_to_google_drive(file_content: bytes, filename: str, content_type: str = "application/octet-stream") -> Optional[str]:
+    """Uploads a file to Google Drive and returns a viewable webViewLink."""
+    access_token = get_valid_google_token()
+    if not access_token:
+        logger.warning("Drive Upload: No valid Google access token available. Returning fallback.")
+        return None
+        
+    import requests
+    import json
+    
+    metadata = {
+        "name": filename,
+        "mimeType": content_type
+    }
+    
+    boundary = "hriq_drive_upload_boundary"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": f"multipart/related; boundary={boundary}"
+    }
+    
+    body_parts = [
+        f"--{boundary}".encode("utf-8"),
+        b"Content-Type: application/json; charset=UTF-8",
+        b"",
+        json.dumps(metadata).encode("utf-8"),
+        f"--{boundary}".encode("utf-8"),
+        f"Content-Type: {content_type}".encode("utf-8"),
+        b"",
+        file_content,
+        f"--{boundary}--".encode("utf-8")
+    ]
+    body = b"\r\n".join(body_parts)
+    upload_url = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart"
+    
+    try:
+        res = requests.post(upload_url, data=body, headers=headers)
+        if res.status_code not in [200, 201]:
+            logger.error(f"Google Drive upload failed: {res.text}")
+            return None
+            
+        file_id = res.json().get("id")
+        if not file_id:
+            return None
+            
+        # Make the file viewable to anyone with the link
+        requests.post(
+            f"https://www.googleapis.com/drive/v3/files/{file_id}/permissions",
+            json={"role": "reader", "type": "anyone"},
+            headers={"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
+        )
+        
+        # Fetch the webViewLink
+        meta_res = requests.get(
+            f"https://www.googleapis.com/drive/v3/files/{file_id}",
+            params={"fields": "webViewLink"},
+            headers={"Authorization": f"Bearer {access_token}"}
+        )
+        if meta_res.status_code == 200:
+            return meta_res.json().get("webViewLink")
+            
+        return f"https://drive.google.com/file/d/{file_id}/view"
+    except Exception as e:
+        logger.error(f"Error uploading file to Google Drive: {e}")
+        return None
+
+@app.get("/api/jobs")
+def get_jobs():
+    return {"jobs": _load_jobs()}
+
+@app.post("/api/jobs/save")
+def save_jobs(payload: list):
+    try:
+        _save_jobs(payload)
+        return {"success": True, "jobs": payload}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/applicants")
+def get_applicants():
+    return {"applicants": _load_applicants()}
+
+@app.post("/api/applicants/delete")
+def delete_applicant(payload: dict):
+    applicant_id = payload.get("id")
+    applicants = _load_applicants()
+    filtered = [a for a in applicants if a.get("id") != applicant_id]
+    _save_applicants(filtered)
+    return {"success": True, "applicants": filtered}
+
+@app.post("/api/jobs/apply")
+async def apply_job(
+    job_id: str = Form(...),
+    name: str = Form(...),
+    email: str = Form(...),
+    phone: str = Form(...),
+    resume: UploadFile = File(...)
+):
+    try:
+        # 1. Fetch targeted Job Description
+        jobs = _load_jobs()
+        target_job = next((j for j in jobs if j.get("id") == job_id), None)
+        if not target_job:
+            raise HTTPException(status_code=404, detail="Selected job position not found.")
+            
+        # 2. Read resume contents
+        file_bytes = await resume.read()
+        suffix = Path(resume.filename).suffix.lower()
+        if suffix not in [".pdf", ".docx"]:
+            raise HTTPException(status_code=400, detail="Only PDF and DOCX resume uploads are supported.")
+            
+        # 3. Upload to Google Drive
+        drive_link = upload_to_google_drive(file_bytes, f"{name.replace(' ', '_')}_Resume{suffix}", resume.content_type)
+        if not drive_link:
+            drive_link = "#"  # Fallback empty link if Google Drive is not connected
+            
+        # 4. Extract resume text
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
+            tmp_file.write(file_bytes)
+            tmp_path = tmp_file.name
+            
+        try:
+            text = extract_text(tmp_path)
+            if not text or not text.strip():
+                raise ValueError("Could not extract readable text from resume.")
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+                
+        # 5. Call Ollama for screening against the specific Job requirements
+        from config import get_ollama_client, OLLAMA_MODEL
+        from core.json_parser import parse_ai_response
+        
+        prompt = (
+            "You are HRIQ Screening Brain. Screen the candidate's resume text against the Job Details below.\n"
+            f"Job Title: {target_job.get('title')}\n"
+            f"JD Description: {target_job.get('description')}\n"
+            f"Required Skills: {target_job.get('desired_skills')}\n\n"
+            f"Candidate Resume Text:\n{text}\n\n"
+            "Evaluate:\n"
+            "1. Assign a Fit Category exactly as: 'Best Fit' (meets >80% criteria), 'Maybe' (meets 50-80% criteria), or 'Not Fit' (meets <50% criteria).\n"
+            "2. Assign a matching score from 0 to 100.\n"
+            "3. Write a concise 1-2 sentence screening summary explaining your decision.\n"
+            "Return in strict JSON format:\n"
+            "{\n"
+            "  \"status\": \"Best Fit\" | \"Maybe\" | \"Not Fit\",\n"
+            "  \"score\": 85,\n"
+            "  \"summary\": \"Screening summary...\"\n"
+            "}\n"
+            "Ensure the JSON is valid. Do not include markdown wraps."
+        )
+        
+        status = "Maybe"
+        score = 60
+        summary = "Resume parsed successfully. Semantic analysis pending server check."
+        
+        try:
+            client = get_ollama_client()
+            resp = client.generate(model=OLLAMA_MODEL, prompt=prompt, format="json", options={"temperature": 0.2})
+            raw_res = resp.get("response", "").strip()
+            parsed = parse_ai_response(raw_res)
+            if parsed and isinstance(parsed, dict):
+                status = parsed.get("status", "Maybe")
+                score = parsed.get("score", 60)
+                summary = parsed.get("summary", "")
+        except Exception as e:
+            logger.error(f"SaaS Application screening LLM error: {e}")
+            
+        # 6. Save applicant details
+        import uuid
+        import time
+        new_applicant = {
+            "id": str(uuid.uuid4()),
+            "job_id": job_id,
+            "job_title": target_job.get("title"),
+            "name": name,
+            "email": email,
+            "phone": phone,
+            "status": status,
+            "score": score,
+            "summary": summary,
+            "drive_link": drive_link,
+            "date_applied": time.strftime("%Y-%m-%d %H:%M")
+        }
+        
+        applicants = _load_applicants()
+        applicants.append(new_applicant)
+        _save_applicants(applicants)
+        
+        return {"success": True, "applicant": new_applicant}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
