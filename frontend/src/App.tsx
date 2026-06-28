@@ -1280,9 +1280,13 @@ export default function App() {
   if (userRole === 'public') {
     const publishedJobs = jobs.filter(j => j.status === 'Published');
     return (
-      <div className="min-h-screen w-screen bg-slate-900 text-slate-100 font-sans flex flex-col">
+      <div className="min-h-screen w-screen bg-slate-955 text-slate-100 font-sans flex flex-col relative overflow-y-auto">
+        {/* Decorative ambient blobs */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-600/10 rounded-full blur-[150px] pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-600/5 rounded-full blur-[150px] pointer-events-none" />
+
         {/* Careers Header */}
-        <header className="bg-slate-950 border-b border-slate-800 py-4 px-8 shrink-0 flex items-center justify-between">
+        <header className="bg-slate-950/80 backdrop-blur-md border-b border-slate-900 py-4 px-8 shrink-0 flex items-center justify-between z-10 sticky top-0">
           <div className="flex items-center space-x-2">
             <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white">IQ</div>
             <span className="font-extrabold text-lg tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">HRIQ Careers</span>
@@ -1293,29 +1297,31 @@ export default function App() {
               setSelectedLoginRole(null);
               setAppliedApplicantResult(null);
             }}
-            className="text-xs border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white px-4 py-2 rounded-lg transition-colors"
+            className="text-xs border border-slate-800 hover:border-indigo-500/50 hover:text-indigo-400 text-slate-400 px-4 py-2 rounded-lg transition-all"
           >
-            SaaS Dashboard &rarr;
+            Dashboard Console &rarr;
           </button>
         </header>
 
-        {/* Hero Section */}
-        <div className="bg-gradient-to-b from-slate-950 to-slate-900 py-16 px-8 text-center relative overflow-hidden">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2/3 h-64 bg-indigo-500/10 rounded-full blur-[80px] pointer-events-none" />
-          <div className="max-w-2xl mx-auto space-y-4 z-10 relative">
-            <h1 className="text-4xl font-extrabold text-white tracking-tight sm:text-5xl">
-              Build the Future With Us
+        {/* HERO SECTION: Join HRIQ */}
+        <div className="py-24 px-8 text-center relative overflow-hidden z-10">
+          <div className="max-w-3xl mx-auto space-y-6">
+            <div className="inline-flex items-center space-x-2 bg-indigo-500/10 border border-indigo-500/20 px-4 py-1.5 rounded-full text-indigo-400 text-xs font-semibold tracking-wider uppercase">
+              We're Hiring
+            </div>
+            <h1 className="text-6xl font-black text-white tracking-tight sm:text-7xl">
+              Join <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-emerald-400">HRIQ</span>
             </h1>
-            <p className="text-slate-400 text-sm max-w-lg mx-auto leading-relaxed">
-              Explore our current open positions. Apply in under a minute with our quick upload and receive instantaneous status evaluation from HRIQ AI Brain.
+            <p className="text-slate-400 text-lg max-w-xl mx-auto leading-relaxed">
+              Build state-of-the-art recruitment pipelines, deploy intelligent AI matching networks, and redefine remote workspace execution.
             </p>
           </div>
         </div>
 
-        {/* Content Area */}
-        <div className="flex-1 max-w-6xl w-full mx-auto px-6 py-12">
+        {/* MAIN INTERACTIVE SECTION */}
+        <div className="flex-1 max-w-6xl w-full mx-auto px-6 pb-24 z-10 space-y-20">
           {appliedApplicantResult ? (
-            <div className="max-w-xl mx-auto bg-slate-950 border border-slate-800 rounded-3xl p-8 text-center space-y-6 shadow-2xl relative overflow-hidden">
+            <div className="max-w-xl mx-auto bg-slate-900/60 border border-slate-800 rounded-3xl p-8 text-center space-y-6 shadow-2xl relative overflow-hidden backdrop-blur-sm">
               <div className="absolute top-0 left-0 w-full h-1.5 bg-emerald-500" />
               <div className="h-16 w-16 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mx-auto">
                 <Check className="h-8 w-8 text-emerald-400" />
@@ -1328,7 +1334,7 @@ export default function App() {
               </div>
 
               {/* AI Feedback Card */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-left space-y-3">
+              <div className="bg-slate-905 border border-slate-850 rounded-2xl p-5 text-left space-y-3">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                   <span className="text-xs font-semibold text-indigo-400 uppercase tracking-widest flex items-center">
                     <Sparkles className="h-3.5 w-3.5 mr-1" /> HRIQ AI Matching Profile
@@ -1358,94 +1364,116 @@ export default function App() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {/* Jobs List */}
-              <div className="md:col-span-2 space-y-6">
-                <h3 className="text-lg font-bold text-white flex items-center">
-                  Open Positions ({publishedJobs.length})
-                </h3>
+            <>
+              {/* JOB ROLE TILES (Open Openings) */}
+              <div className="space-y-6">
+                <div className="text-center space-y-2">
+                  <h2 className="text-3xl font-extrabold text-white tracking-tight">Open Job Opportunities</h2>
+                  <p className="text-slate-400 text-sm">Select a role below to initiate quick AI matching evaluation.</p>
+                </div>
+
                 {publishedJobs.length === 0 ? (
-                  <div className="bg-slate-950 border border-slate-800 rounded-2xl p-12 text-center text-slate-500">
-                    No active job listings at the moment. Please check back later!
+                  <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-16 text-center text-slate-500 max-w-xl mx-auto">
+                    No active job listings published at the moment. Try posting some positions as HR!
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {publishedJobs.map(job => (
-                      <div key={job.id} className="bg-slate-950 border border-slate-800 rounded-2xl p-6 space-y-4 hover:border-indigo-500/40 transition-colors">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h4 className="text-xl font-bold text-white">{job.title}</h4>
-                            <div className="flex items-center space-x-3 text-xs text-slate-400 mt-1">
-                              <span className="flex items-center"><Folder className="h-3.5 w-3.5 mr-1 text-slate-400" /> {job.department}</span>
-                              <span>•</span>
-                              <span className="flex items-center"><MapPin className="h-3.5 w-3.5 mr-1 text-slate-400" /> {job.location}</span>
-                              {job.salary && (
-                                <>
-                                  <span>•</span>
-                                  <span className="flex items-center"><DollarSign className="h-3.5 w-3.5 mr-0.5 text-slate-400" /> {job.salary}</span>
-                                </>
-                              )}
+                      <div 
+                        key={job.id} 
+                        className="bg-slate-900/40 border border-slate-850 hover:border-indigo-500/40 rounded-2xl p-6 flex flex-col justify-between space-y-6 hover:shadow-xl hover:shadow-indigo-500/2 transition-all duration-300 relative group"
+                      >
+                        <div className="space-y-4">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h3 className="text-xl font-bold text-white group-hover:text-indigo-400 transition-colors">{job.title}</h3>
+                              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 mt-2">
+                                <span className="flex items-center bg-slate-950 border border-slate-850 px-2.5 py-1 rounded-md">
+                                  <Folder className="h-3 w-3 mr-1 text-indigo-400" /> {job.department}
+                                </span>
+                                <span className="flex items-center bg-slate-950 border border-slate-850 px-2.5 py-1 rounded-md">
+                                  <MapPin className="h-3 w-3 mr-1 text-emerald-400" /> {job.location}
+                                </span>
+                                {job.salary && (
+                                  <span className="flex items-center bg-slate-950 border border-slate-850 px-2.5 py-1 rounded-md">
+                                    <DollarSign className="h-3 w-3 mr-0.5 text-amber-400" /> {job.salary}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
-                          <button 
-                            onClick={() => {
-                              setSelectedJobForApply(job);
-                              setApplyForm({ name: "", email: "", phone: "" });
-                              setApplyFile(null);
-                            }}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-lg transition-colors shadow-md"
-                          >
-                            Apply Now
-                          </button>
+                          
+                          <p className="text-xs text-slate-300 leading-relaxed line-clamp-3 whitespace-pre-line">
+                            {job.description}
+                          </p>
+
+                          {job.desired_skills && (
+                            <div className="flex flex-wrap gap-1.5 pt-2">
+                              {job.desired_skills.split(',').map((skill: string) => (
+                                <span key={skill} className="bg-slate-955 border border-slate-850 text-slate-400 text-[10px] px-2.5 py-1 rounded-md font-semibold">
+                                  {skill.trim()}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                        <div className="text-xs text-slate-300 leading-relaxed whitespace-pre-line">
-                          {job.description}
-                        </div>
-                        {job.desired_skills && (
-                          <div className="flex flex-wrap gap-1.5 pt-2">
-                            {job.desired_skills.split(',').map((skill: string) => (
-                              <span key={skill} className="bg-slate-900 border border-slate-800 text-slate-300 text-[10px] px-2 py-0.5 rounded">
-                                {skill.trim()}
-                              </span>
-                            ))}
-                          </div>
-                        )}
+
+                        <button 
+                          onClick={() => {
+                            setSelectedJobForApply(job);
+                            setApplyForm({ name: "", email: "", phone: "" });
+                            setApplyFile(null);
+                          }}
+                          className="w-full bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white font-bold text-xs py-2.5 rounded-xl transition-all border border-indigo-500/20 shadow-md group-hover:scale-[1.01]"
+                        >
+                          Apply For This Role
+                        </button>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
 
-              {/* Sidebar Info */}
-              <div className="space-y-6">
-                <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6 space-y-4">
-                  <h4 className="text-sm font-bold text-white uppercase tracking-wider">Hiring Process</h4>
-                  <div className="space-y-4 text-xs font-semibold">
-                    <div className="flex space-x-3">
-                      <div className="h-6 w-6 rounded-full bg-indigo-500/10 text-indigo-400 flex items-center justify-center font-bold shrink-0">1</div>
-                      <div>
-                        <p className="font-semibold text-white">Quick Apply</p>
-                        <p className="text-slate-400 mt-0.5">Submit your resume and details.</p>
-                      </div>
+              {/* WHY HRIQ SECTION */}
+              <div className="border-t border-slate-900 pt-16 space-y-10">
+                <div className="text-center space-y-2">
+                  <h2 className="text-3xl font-extrabold text-white tracking-tight">Why HRIQ?</h2>
+                  <p className="text-slate-400 text-sm">Our core principles and employee growth infrastructure.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  <div className="bg-slate-900/20 border border-slate-850 rounded-2xl p-6 space-y-3">
+                    <div className="h-10 w-10 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-400">
+                      <Sparkles className="h-5 w-5" />
                     </div>
-                    <div className="flex space-x-3">
-                      <div className="h-6 w-6 rounded-full bg-indigo-500/10 text-indigo-400 flex items-center justify-center font-bold shrink-0">2</div>
-                      <div>
-                        <p className="font-semibold text-white">AI Screening</p>
-                        <p className="text-slate-400 mt-0.5">HRIQ Brain evaluates candidate fits instantly.</p>
-                      </div>
+                    <h4 className="text-md font-bold text-white">AI-Powered Evaluations</h4>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      We value transparency. Our proprietary HRIQ AI Matcher analyzes resume parameters against real job descriptions to deliver instant, bias-free fit grades.
+                    </p>
+                  </div>
+
+                  <div className="bg-slate-900/20 border border-slate-850 rounded-2xl p-6 space-y-3">
+                    <div className="h-10 w-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-400">
+                      <Globe className="h-5 w-5" />
                     </div>
-                    <div className="flex space-x-3">
-                      <div className="h-6 w-6 rounded-full bg-indigo-500/10 text-indigo-400 flex items-center justify-center font-bold shrink-0">3</div>
-                      <div>
-                        <p className="font-semibold text-white">HR Outreach</p>
-                        <p className="text-slate-400 mt-0.5">We schedule technical interview deep dives.</p>
-                      </div>
+                    <h4 className="text-md font-bold text-white">Remote-First Culture</h4>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      Work from wherever you perform your best. We provide remote equipment stipends, flexible core periods, and asynchronous operating patterns.
+                    </p>
+                  </div>
+
+                  <div className="bg-slate-900/20 border border-slate-850 rounded-2xl p-6 space-y-3">
+                    <div className="h-10 w-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-400">
+                      <Award className="h-5 w-5" />
                     </div>
+                    <h4 className="text-md font-bold text-white">Hyper-Scale Growth</h4>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      Accelerate your career track inside deep tech engineering, product architecture, and data science environments with direct mentoring channels.
+                    </p>
                   </div>
                 </div>
               </div>
-            </div>
+            </>
           )}
         </div>
 
