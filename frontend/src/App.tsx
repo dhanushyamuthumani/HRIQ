@@ -76,7 +76,7 @@ interface Message {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'intake' | 'chat' | 'talent' | 'sourcing' | 'logs' | 'bulk' | 'status' | 'interview' | 'settings' | 'jobs' | 'applicants'>('talent');
+  const [activeTab, setActiveTab] = useState<'intake' | 'chat' | 'talent' | 'sourcing' | 'logs' | 'bulk' | 'status' | 'interview' | 'settings' | 'jobs' | 'applicants' | 'users' | 'requests'>('talent');
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [selectedContext, setSelectedContext] = useState<string>("Complete Hub");
   const [sysStatus, setSysStatus] = useState<any>({ all_clear: false, server: { status: "Offline", message: "Loading..." }, model: { status: "Offline", message: "Loading..." } });
@@ -172,10 +172,43 @@ export default function App() {
   const [googleStatus, setGoogleStatus] = useState<any>({ connected: false });
   
   // Role & Session State
-  const [userRole, setUserRole] = useState<'ceo' | 'hr' | 'public' | null>(null);
-  const [selectedLoginRole, setSelectedLoginRole] = useState<'ceo' | 'hr' | 'public' | null>(null);
+  const [userRole, setUserRole] = useState<'ceo' | 'hr' | 'admin' | 'public' | null>(null);
+  const [selectedLoginRole, setSelectedLoginRole] = useState<'ceo' | 'hr' | 'admin' | 'public' | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [usernameInput, setUsernameInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
+  
+  // User Management database
+  const [usersDb, setUsersDb] = useState<any[]>(() => {
+    const saved = localStorage.getItem("hriq_users_db");
+    if (saved) return JSON.parse(saved);
+    return [
+      { email: "dhanushyahr@hriq.com", password: "hrpass123", role: "hr", name: "Dhanushya HR" },
+      { email: "dhanushyaceo@hriq.com", password: "ceopass123", role: "ceo", name: "Dhanushya CEO" },
+      { email: "admin@hriq.com", password: "adminpass123", role: "admin", name: "System Admin" }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem("hriq_users_db", JSON.stringify(usersDb));
+  }, [usersDb]);
+
+  // Forgot password flow states
+  const [forgotPasswordRequests, setForgotPasswordRequests] = useState<any[]>(() => {
+    const saved = localStorage.getItem("hriq_forgot_requests");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem("hriq_forgot_requests", JSON.stringify(forgotPasswordRequests));
+  }, [forgotPasswordRequests]);
+
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+  const [showForgotModal, setShowForgotModal] = useState(false);
+
+  // Admin Portal Add User State
+  const [addUserForm, setAddUserForm] = useState({ name: "", email: "", password: "", role: "hr" });
+
   const [jobs, setJobs] = useState<any[]>([]);
   const [applicants, setApplicants] = useState<any[]>([]);
   const [jobForm, setJobForm] = useState({
@@ -261,6 +294,35 @@ export default function App() {
       console.error("Error loading applicants", e);
     }
   };
+
+  // Hash Routing
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      setIsAuthenticated(false); // Reset auth token when link changes
+      if (hash === '#/hr') {
+        setUserRole('hr');
+        setSelectedLoginRole('hr');
+        setActiveTab('talent');
+      } else if (hash === '#/ceo') {
+        setUserRole('ceo');
+        setSelectedLoginRole('ceo');
+        setActiveTab('talent');
+      } else if (hash === '#/admin') {
+        setUserRole('admin');
+        setSelectedLoginRole('admin');
+        setActiveTab('users');
+      } else if (hash === '#/careers') {
+        setUserRole('public');
+      } else {
+        setUserRole(null);
+        setSelectedLoginRole(null);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    handleHashChange();
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   // Fetch initial data
   useEffect(() => {
@@ -363,25 +425,84 @@ export default function App() {
   // SaaS Event Handlers
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedLoginRole === 'hr') {
-      if (usernameInput === 'hr' && passwordInput === 'hr123') {
-        setUserRole('hr');
+    const user = usersDb.find(u => u.email.toLowerCase() === usernameInput.toLowerCase() && u.password === passwordInput && u.role === selectedLoginRole);
+    if (user) {
+      setUserRole(user.role);
+      setIsAuthenticated(true);
+      if (user.role === 'admin') {
+        setActiveTab('users');
+      } else {
         setActiveTab('talent');
-        setUsernameInput("");
-        setPasswordInput("");
-      } else {
-        alert("Error:  Invalid HR credentials. Hint: use hr / hr123");
       }
-    } else if (selectedLoginRole === 'ceo') {
-      if (usernameInput === 'ceo' && passwordInput === 'ceo123') {
-        setUserRole('ceo');
-        setActiveTab('talent'); // In CEO view, activeTab acts as dashboard tab selection
-        setUsernameInput("");
-        setPasswordInput("");
-      } else {
-        alert("Error:  Invalid CEO credentials. Hint: use ceo / ceo123");
-      }
+      setUsernameInput("");
+      setPasswordInput("");
+    } else {
+      alert(`Error: Invalid credentials for ${selectedLoginRole?.toUpperCase()} role.`);
     }
+  };
+
+  const handleRequestPasswordReset = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotPasswordEmail) return;
+    const req = {
+      id: Math.random().toString(36).substr(2, 9),
+      email: forgotPasswordEmail,
+      date: new Date().toISOString().split('T')[0],
+      status: "Pending"
+    };
+    setForgotPasswordRequests([...forgotPasswordRequests, req]);
+    setForgotPasswordEmail("");
+    setShowForgotModal(false);
+    alert("✉️ Password reset request submitted to admin successfully!");
+  };
+
+  const handleAdminResetPassword = (requestId: string, newPassword = "defaultpass123") => {
+    const req = forgotPasswordRequests.find(r => r.id === requestId);
+    if (!req) return;
+    
+    // Update user password in usersDb
+    const updatedUsers = usersDb.map(u => {
+      if (u.email.toLowerCase() === req.email.toLowerCase()) {
+        return { ...u, password: newPassword };
+      }
+      return u;
+    });
+    setUsersDb(updatedUsers);
+    
+    // Mark request as Completed
+    const updatedReqs = forgotPasswordRequests.map(r => {
+      if (r.id === requestId) {
+        return { ...r, status: `Reset to ${newPassword}` };
+      }
+      return r;
+    });
+    setForgotPasswordRequests(updatedReqs);
+    alert(`Success: Password reset to '${newPassword}' for ${req.email}`);
+  };
+
+  const deletePasswordRequest = (requestId: string) => {
+    setForgotPasswordRequests(forgotPasswordRequests.filter(r => r.id !== requestId));
+  };
+
+  const adminAddUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addUserForm.name || !addUserForm.email || !addUserForm.password) return;
+    if (usersDb.some(u => u.email.toLowerCase() === addUserForm.email.toLowerCase())) {
+      alert("Error: User with this email already exists.");
+      return;
+    }
+    setUsersDb([...usersDb, { ...addUserForm }]);
+    setAddUserForm({ name: "", email: "", password: "", role: "hr" });
+    alert("Success: User successfully added!");
+  };
+
+  const adminDeleteUser = (email: string) => {
+    if (email === "admin@hriq.com") {
+      alert("Error: Cannot delete system admin.");
+      return;
+    }
+    if (!window.confirm(`Are you sure you want to delete user ${email}?`)) return;
+    setUsersDb(usersDb.filter(u => u.email !== email));
   };
 
   const submitJob = async (e: React.FormEvent) => {
@@ -1143,31 +1264,33 @@ export default function App() {
 
   const allTags = Array.from(new Set(candidates.map(c => c.tag || "Global")));
 
-  if (userRole === null) {
+  if (!isAuthenticated && userRole !== 'public') {
     return (
-      <div className="min-h-screen w-screen overflow-y-auto bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-6 relative font-sans">
-        {/* Decorative blobs */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-600/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="min-h-screen w-screen overflow-y-auto bg-slate-955 text-slate-100 flex flex-col items-center justify-center p-6 relative font-sans">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-600/10 rounded-full blur-[150px] pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-600/5 rounded-full blur-[150px] pointer-events-none" />
         
         <div className="max-w-4xl w-full z-10 space-y-8">
           <div className="text-center space-y-3">
             <div className="inline-flex items-center space-x-2 bg-indigo-500/10 border border-indigo-500/20 px-4 py-1.5 rounded-full text-indigo-400 text-xs font-semibold tracking-wider uppercase">
-              <Sparkles className="h-3.5 w-3.5 mr-1" /> Next-Gen SaaS Platform
+              <Sparkles className="h-3.5 w-3.5 mr-1" /> HRIQ Enterprise SaaS
             </div>
             <h1 className="text-5xl font-black tracking-tight text-white sm:text-6xl">
               HRIQ <span className="text-indigo-500">Enterprise</span>
             </h1>
             <p className="text-slate-400 text-sm max-w-lg mx-auto">
-              Automated AI resume evaluation, careers portal, and multi-role executive analytics.
+              Automated AI resume evaluations, multi-role workspaces, and decentralized system control.
             </p>
           </div>
 
           {!selectedLoginRole ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 pt-4">
               {/* Careers Card */}
               <button 
-                onClick={() => setUserRole('public')}
+                onClick={() => {
+                  setUserRole('public');
+                  window.location.hash = '/careers';
+                }}
                 className="group relative bg-slate-900/60 border border-slate-800 hover:border-indigo-500/50 rounded-2xl p-6 text-left transition-all hover:-translate-y-1 hover:shadow-xl duration-300"
               >
                 <div className="h-12 w-12 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform mb-4">
@@ -1175,7 +1298,7 @@ export default function App() {
                 </div>
                 <h3 className="text-lg font-bold text-white mb-2">Careers Portal</h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  View open roles, submit resume applications, and get instant AI screening responses.
+                  View open jobs, submit your resume, and see instantaneous AI evaluations.
                 </p>
                 <div className="mt-4 text-xs font-semibold text-indigo-400 flex items-center group-hover:translate-x-1 transition-transform">
                   Enter Portal &rarr;
@@ -1184,35 +1307,64 @@ export default function App() {
 
               {/* HR Card */}
               <button 
-                onClick={() => setSelectedLoginRole('hr')}
-                className="group relative bg-slate-900/60 border border-slate-800 hover:border-indigo-500/50 rounded-2xl p-6 text-left transition-all hover:-translate-y-1 hover:shadow-xl duration-300"
+                onClick={() => {
+                  setSelectedLoginRole('hr');
+                  setUserRole('hr');
+                  window.location.hash = '/hr';
+                }}
+                className="group relative bg-slate-900/60 border border-slate-800 hover:border-emerald-500/50 rounded-2xl p-6 text-left transition-all hover:-translate-y-1 hover:shadow-xl duration-300"
               >
                 <div className="h-12 w-12 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform mb-4">
                   <Users className="h-6 w-6" />
                 </div>
-                <h3 className="text-lg font-bold text-white mb-2">HR Operations</h3>
+                <h3 className="text-lg font-bold text-white mb-2">HR Portal</h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Manage active jobs, evaluate candidates, schedule interviews, and trigger bulk outreach.
+                  Manage positions, evaluate candidates, schedule interviews, and outreach.
                 </p>
                 <div className="mt-4 text-xs font-semibold text-emerald-400 flex items-center group-hover:translate-x-1 transition-transform">
-                  Login to Console &rarr;
+                  Login &rarr;
                 </div>
               </button>
 
               {/* CEO Card */}
               <button 
-                onClick={() => setSelectedLoginRole('ceo')}
-                className="group relative bg-slate-900/60 border border-slate-800 hover:border-indigo-500/50 rounded-2xl p-6 text-left transition-all hover:-translate-y-1 hover:shadow-xl duration-300"
+                onClick={() => {
+                  setSelectedLoginRole('ceo');
+                  setUserRole('ceo');
+                  window.location.hash = '/ceo';
+                }}
+                className="group relative bg-slate-900/60 border border-slate-800 hover:border-amber-500/50 rounded-2xl p-6 text-left transition-all hover:-translate-y-1 hover:shadow-xl duration-300"
               >
                 <div className="h-12 w-12 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform mb-4">
                   <Award className="h-6 w-6" />
                 </div>
                 <h3 className="text-lg font-bold text-white mb-2">CEO Dashboard</h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Monitor executive hiring metrics, role distribution, and candidate match qualities.
+                  Monitor overall hiring stats, department counts, and top matches.
                 </p>
                 <div className="mt-4 text-xs font-semibold text-amber-400 flex items-center group-hover:translate-x-1 transition-transform">
-                  Access Executive View &rarr;
+                  Login &rarr;
+                </div>
+              </button>
+
+              {/* Admin Card */}
+              <button 
+                onClick={() => {
+                  setSelectedLoginRole('admin');
+                  setUserRole('admin');
+                  window.location.hash = '/admin';
+                }}
+                className="group relative bg-slate-900/60 border border-slate-800 hover:border-rose-500/50 rounded-2xl p-6 text-left transition-all hover:-translate-y-1 hover:shadow-xl duration-300"
+              >
+                <div className="h-12 w-12 bg-rose-500/10 rounded-xl flex items-center justify-center text-rose-400 group-hover:scale-110 transition-transform mb-4">
+                  <Settings className="h-6 w-6" />
+                </div>
+                <h3 className="text-lg font-bold text-white mb-2">Admin Portal</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  System user management, allocate roles, and approve password resets.
+                </p>
+                <div className="mt-4 text-xs font-semibold text-rose-400 flex items-center group-hover:translate-x-1 transition-transform">
+                  Login &rarr;
                 </div>
               </button>
             </div>
@@ -1221,46 +1373,72 @@ export default function App() {
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500" />
               
               <button 
-                onClick={() => setSelectedLoginRole(null)}
+                onClick={() => {
+                  setSelectedLoginRole(null);
+                  setUserRole(null);
+                  window.location.hash = '';
+                }}
                 className="text-slate-400 hover:text-white text-xs mb-6 inline-flex items-center"
               >
-                &larr; Back to roles
+                &larr; Back to Portal Selection
               </button>
 
               <h2 className="text-2xl font-extrabold text-white mb-2 uppercase tracking-wide">
-                {selectedLoginRole === 'hr' ? 'HR Console Login' : 'CEO Executive Login'}
+                {selectedLoginRole === 'hr' ? 'HR Console Login' : selectedLoginRole === 'ceo' ? 'CEO Executive Login' : 'Admin Operations Login'}
               </h2>
               <p className="text-xs text-slate-400 mb-6">
-                Please enter your credentials below to securely access your dashboard.
+                Please enter your credentials below to securely access your workspace.
               </p>
 
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Username</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Email Username</label>
                   <input 
-                    type="text" 
+                    type="email" 
                     value={usernameInput}
                     onChange={e => setUsernameInput(e.target.value)}
-                    className="w-full bg-slate-950/80 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-white outline-none focus:border-indigo-500 transition-colors"
-                    placeholder={`Enter '${selectedLoginRole}'`}
+                    className="w-full bg-slate-955 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-white outline-none focus:border-indigo-500 transition-colors"
+                    placeholder={selectedLoginRole === 'hr' ? "dhanushyahr@hriq.com" : selectedLoginRole === 'ceo' ? "dhanushyaceo@hriq.com" : "admin@hriq.com"}
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Password</label>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400">Password</label>
+                    <button 
+                      type="button" 
+                      onClick={() => setShowForgotModal(true)}
+                      className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold hover:underline bg-transparent border-0 cursor-pointer p-0"
+                    >
+                      Forgot Password?
+                    </button>
+                  </div>
                   <input 
                     type="password" 
                     value={passwordInput}
                     onChange={e => setPasswordInput(e.target.value)}
-                    className="w-full bg-slate-950/80 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-white outline-none focus:border-indigo-500 transition-colors"
-                    placeholder={`Enter '${selectedLoginRole}123'`}
+                    className="w-full bg-slate-955 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-white outline-none focus:border-indigo-500 transition-colors"
+                    placeholder="Enter password"
                     required
                   />
                 </div>
 
-                <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-3 text-xs text-indigo-300 flex items-center">
-                  <Lightbulb className="h-4 w-4 mr-1.5 text-amber-400 shrink-0" />
-                  <span>**Demo credentials**: Use **`{selectedLoginRole}`** / **`{selectedLoginRole}123`**</span>
+                <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-3 text-xs text-indigo-300 space-y-1">
+                  <div className="flex items-center font-bold">
+                    <Lightbulb className="h-4 w-4 mr-1.5 text-amber-400 shrink-0" />
+                    <span>Demo Credentials:</span>
+                  </div>
+                  <div className="text-[11px] text-slate-400 font-semibold space-y-0.5">
+                    {selectedLoginRole === 'hr' && (
+                      <p>Username: <strong className="text-white">dhanushyahr@hriq.com</strong><br />Password: <strong className="text-white">hrpass123</strong></p>
+                    )}
+                    {selectedLoginRole === 'ceo' && (
+                      <p>Username: <strong className="text-white">dhanushyaceo@hriq.com</strong><br />Password: <strong className="text-white">ceopass123</strong></p>
+                    )}
+                    {selectedLoginRole === 'admin' && (
+                      <p>Username: <strong className="text-white">admin@hriq.com</strong><br />Password: <strong className="text-white">adminpass123</strong></p>
+                    )}
+                  </div>
                 </div>
 
                 <button 
@@ -1273,6 +1451,43 @@ export default function App() {
             </div>
           )}
         </div>
+
+        {/* FORGOT PASSWORD MODAL */}
+        {showForgotModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 relative shadow-2xl text-xs">
+              <button 
+                onClick={() => setShowForgotModal(false)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+              <div>
+                <h3 className="text-lg font-bold text-white">Request Password Reset</h3>
+                <p className="text-slate-400 mt-1">Forgot your credentials? Submit your email to request admin assistance.</p>
+              </div>
+              <form onSubmit={handleRequestPasswordReset} className="space-y-4">
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">Your Registered Email</label>
+                  <input 
+                    type="email" 
+                    required
+                    value={forgotPasswordEmail}
+                    onChange={e => setForgotPasswordEmail(e.target.value)}
+                    className="w-full bg-slate-955 border border-slate-850 rounded-lg px-3 py-2 text-white outline-none focus:border-indigo-500"
+                    placeholder="dhanushyahr@hriq.com"
+                  />
+                </div>
+                <button 
+                  type="submit"
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-lg transition-colors shadow-md"
+                >
+                  Submit Request &rarr;
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -1823,6 +2038,241 @@ export default function App() {
                             <td className="py-3.5 px-6 text-slate-400">{j.created_at}</td>
                             <td className="py-3.5 px-6 font-bold text-indigo-600">
                               {applicants.filter(a => a.job_id === j.id).length} candidates
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (userRole === 'admin') {
+    return (
+      <div className="flex h-screen w-screen overflow-hidden bg-slate-50 text-slate-900 font-sans">
+        {/* Admin Sidebar */}
+        <aside className="w-64 flex flex-col bg-white border-r border-slate-200">
+          <div className="p-6 flex flex-col items-center border-b border-slate-100">
+            <img src="/logo.png" alt="HRIQ" className="h-16 object-contain" />
+            <span className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-widest">Admin Operations</span>
+          </div>
+
+          <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
+            <div className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Admin Panel</div>
+            <button 
+              onClick={() => setActiveTab('users')}
+              className={`w-full flex items-center px-4 py-3 text-sm font-semibold rounded-lg transition-all ${activeTab === 'users' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:bg-slate-50'}`}
+            >
+              <Users className="h-5 w-5 mr-3 text-rose-500" /> User Management
+            </button>
+            <button 
+              onClick={() => setActiveTab('requests')}
+              className={`w-full flex items-center px-4 py-3 text-sm font-semibold rounded-lg transition-all ${activeTab === 'requests' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:bg-slate-50'}`}
+            >
+              <ClipboardList className="h-5 w-5 mr-3 text-amber-500" /> Reset Requests
+              {forgotPasswordRequests.filter(r => r.status === 'Pending').length > 0 && (
+                <span className="ml-auto bg-amber-500 text-white font-bold text-[10px] px-2 py-0.5 rounded-full">
+                  {forgotPasswordRequests.filter(r => r.status === 'Pending').length}
+                </span>
+              )}
+            </button>
+          </nav>
+
+          <div className="p-4 border-t border-slate-100 space-y-2">
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-center">
+              <p className="text-[10px] font-bold text-slate-400 uppercase">Logged in as</p>
+              <p className="text-xs font-semibold text-slate-700 mt-0.5">System Admin</p>
+            </div>
+            <button 
+              onClick={() => {
+                setUserRole(null);
+                setSelectedLoginRole(null);
+                setIsAuthenticated(false);
+                window.location.hash = '';
+              }}
+              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 rounded-lg text-xs transition-colors"
+            >
+              Logout Admin
+            </button>
+          </div>
+        </aside>
+
+        {/* Admin Content Panel */}
+        <main className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-slate-50/50">
+          <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0">
+            <h1 className="text-lg font-bold text-slate-800">Admin Operations Board</h1>
+          </header>
+
+          <div className="flex-1 p-8 space-y-6 overflow-y-auto">
+            {activeTab === 'users' ? (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Add User Form */}
+                <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4 lg:col-span-1">
+                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center">
+                    <Plus className="h-4 w-4 mr-1 text-indigo-500" /> Allocate Role & User
+                  </h3>
+                  <form onSubmit={adminAddUser} className="space-y-3.5 text-xs">
+                    <div>
+                      <label className="block font-semibold text-slate-500 mb-1">Full Name</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={addUserForm.name}
+                        onChange={e => setAddUserForm({...addUserForm, name: e.target.value})}
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-indigo-500"
+                        placeholder="John Doe"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-500 mb-1">Email Username</label>
+                      <input 
+                        type="email" 
+                        required
+                        value={addUserForm.email}
+                        onChange={e => setAddUserForm({...addUserForm, email: e.target.value})}
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-indigo-500"
+                        placeholder="user@hriq.com"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-500 mb-1">Access Password</label>
+                      <input 
+                        type="password" 
+                        required
+                        value={addUserForm.password}
+                        onChange={e => setAddUserForm({...addUserForm, password: e.target.value})}
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-indigo-500"
+                        placeholder="Enter password"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-500 mb-1">Assigned Role</label>
+                      <select 
+                        value={addUserForm.role}
+                        onChange={e => setAddUserForm({...addUserForm, role: e.target.value})}
+                        className="w-full border border-slate-200 bg-white rounded-lg px-2.5 py-2 outline-none focus:border-indigo-500"
+                      >
+                        <option value="hr">HR Operations Partner</option>
+                        <option value="ceo">CEO Executive Member</option>
+                        <option value="admin">System Administration</option>
+                      </select>
+                    </div>
+                    <button 
+                      type="submit"
+                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-lg shadow-sm transition-colors"
+                    >
+                      Allocate & Save User &rarr;
+                    </button>
+                  </form>
+                </div>
+
+                {/* Users List Table */}
+                <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden lg:col-span-2">
+                  <div className="px-6 py-4 border-b border-slate-200 bg-slate-50/50">
+                    <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Allocated Users ({usersDb.length})</h3>
+                  </div>
+                  <div className="overflow-x-auto text-xs">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-200 text-slate-400 bg-slate-50 font-semibold uppercase tracking-wider">
+                          <th className="py-3 px-6">Name</th>
+                          <th className="py-3 px-6">Email / Username</th>
+                          <th className="py-3 px-6">Password</th>
+                          <th className="py-3 px-6">Role</th>
+                          <th className="py-3 px-6">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-slate-700">
+                        {usersDb.map((u, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50/20 transition-colors">
+                            <td className="py-3.5 px-6 font-bold text-slate-900">{u.name}</td>
+                            <td className="py-3.5 px-6 font-medium text-slate-500">{u.email}</td>
+                            <td className="py-3.5 px-6 font-semibold text-slate-800">{u.password}</td>
+                            <td className="py-3.5 px-6">
+                              <span className={`font-bold px-2 py-0.5 rounded text-[10px] uppercase ${
+                                u.role === 'admin' ? 'bg-rose-50 text-rose-700 border border-rose-100' :
+                                u.role === 'ceo' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
+                                'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                              }`}>
+                                {u.role}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-6">
+                              {u.email !== 'admin@hriq.com' ? (
+                                <button 
+                                  onClick={() => adminDeleteUser(u.email)}
+                                  className="text-rose-600 hover:text-rose-800 font-bold hover:underline"
+                                >
+                                  Delete
+                                </button>
+                              ) : (
+                                <span className="text-slate-400 italic">System Owner</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* TAB: PASSWORD RESET REQUESTS */
+              <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-200 bg-slate-50/50">
+                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Reset Assistance Queue</h3>
+                </div>
+                <div className="overflow-x-auto text-xs">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-slate-400 bg-slate-50 font-semibold uppercase tracking-wider">
+                        <th className="py-3 px-6">Email Target</th>
+                        <th className="py-3 px-6">Requested Date</th>
+                        <th className="py-3 px-6">Reset Status</th>
+                        <th className="py-3 px-6">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-slate-700">
+                      {forgotPasswordRequests.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="py-8 text-center text-slate-400">No reset requests currently in queue.</td>
+                        </tr>
+                      ) : (
+                        forgotPasswordRequests.map((r, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50/20 transition-colors">
+                            <td className="py-3.5 px-6 font-bold text-slate-900">{r.email}</td>
+                            <td className="py-3.5 px-6 text-slate-400">{r.date}</td>
+                            <td className="py-3.5 px-6">
+                              <span className={`font-bold px-2 py-0.5 rounded text-[10px] ${
+                                r.status === 'Pending' ? 'bg-amber-50 text-amber-700 border border-amber-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                              }`}>
+                                {r.status}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-6 space-x-3">
+                              {r.status === 'Pending' && (
+                                <button 
+                                  onClick={() => {
+                                    const newPass = prompt("Enter new password for this user:", "newpass123");
+                                    if (newPass) handleAdminResetPassword(r.id, newPass);
+                                  }}
+                                  className="text-emerald-600 hover:text-emerald-800 font-bold hover:underline"
+                                >
+                                  Complete Reset
+                                </button>
+                              )}
+                              <button 
+                                onClick={() => deletePasswordRequest(r.id)}
+                                className="text-rose-600 hover:text-rose-800 font-bold hover:underline"
+                              >
+                                Dismiss
+                              </button>
                             </td>
                           </tr>
                         ))

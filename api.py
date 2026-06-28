@@ -942,7 +942,7 @@ def get_jobs():
     return {"jobs": _load_jobs()}
 
 @app.post("/api/jobs/save")
-def save_jobs(payload: list):
+def save_jobs(payload: List[dict]):
     try:
         _save_jobs(payload)
         return {"success": True, "jobs": payload}
